@@ -1,14 +1,21 @@
 package tags
 
 import (
+	"encoding/json"
+	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/fatih/color"
+
 	"github.com/KusoKaihatsuSha/startup/internal/helpers"
+	"github.com/KusoKaihatsuSha/startup/internal/order"
 	"github.com/KusoKaihatsuSha/startup/internal/validation"
 )
 
@@ -16,30 +23,39 @@ const (
 	defaultTag     = "default"
 	flagTag        = "flag"
 	EnvironmentTag = "env"
-	helpTextTag    = "text"
+	helpTextTag    = "help"
 	validationTag  = "valid"
 	jsonTag        = "json"
 
 	testTrigger = "-test."
 )
 
-// Tmp consist information when reading/valid configs
-type TagsInfo map[string]tagInfo
+var durationTypesMap = map[string]string{
+	"ns": "Nanosecond",
+	"us": "Microsecond",
+	"ms": "Millisecond",
+	"s":  "Second",
+	"m":  "Minute",
+	"h":  "Hour",
+}
 
-// TagInfo store tags Config struct
-type tagInfo struct {
-	ConfigFile func(map[string]string) tagInfo
+// Tags consist information when reading/valid configs
+type Tags map[string]Tag
+
+// Tag of TagInfo store tags Config struct
+type Tag struct {
+	ConfigFile func(map[string]any) Tag
 	Valid      func() any
-	DummyFlags func() tagInfo
-	Env        func() tagInfo
-	Flag       func() tagInfo
+	DummyFlags func() Tag
+	Env        func() Tag
+	Flag       func() Tag
 	FlagSet    *flag.FlagSet
-	Flags      []*flag.Flag
+	Flags      map[string]*flag.Flag
 	Name       string
 	Annotation
 }
 
-// Tag store general values
+// Annotation - store general values
 type Annotation struct {
 	valid string
 	json  string
@@ -49,102 +65,391 @@ type Annotation struct {
 	flag  []string
 }
 
-// tags filling the 'tag'
-func Fill[T any](field string) tagInfo {
-	var structAny T
-	ret := tagInfo{}
-	ret.Name = field
-	ret.FlagSet = flag.NewFlagSet("", flag.ContinueOnError)
-	tmp, exist := reflect.TypeOf(structAny).FieldByName(ret.Name)
+type storage struct {
+	Flag        bool
+	Store       any
+	StoreString string
+	Type        reflect.StructField
+	Default     string
+	Desc        string
+	Env         string
+	JSON        string
+	Name        string
+}
+
+// Set 'flag' interface implementation
+func (p *storage) Set(s string) error {
+	var err error
+	p.Store, err = comparatorStringType(nil, p.Type, s, p.Flag)
+	p.StoreString = s
+	return err
+}
+
+// String - Stringer interface implementation
+func (t *storage) String() string {
+	return fmt.Sprint(t.Store)
+}
+
+// Fill - filling the 'tag'
+func Fill[T any](field string, order ...order.Stages) Tag {
+	var t T
+	tagData := Tag{}
+
+	tagData.Flags = make(map[string]*flag.Flag)
+
+	tagData.Name = field
+	tagData.FlagSet = flag.NewFlagSet("", flag.ContinueOnError)
+	fieldByName, exist := reflect.TypeOf(t).FieldByName(tagData.Name)
 	if !exist {
-		return tagInfo{}
+		return Tag{}
 	}
-	if v, ok := tmp.Tag.Lookup(defaultTag); ok {
-		ret.def = v
+	if v, ok := fieldByName.Tag.Lookup(helpTextTag); ok {
+		tagData.desc = v
 	}
-	if v, ok := tmp.Tag.Lookup(flagTag); ok {
-		ret.flag = strings.Split(v, ",")
-		var all string
-		for _, flagTag := range ret.flag {
-			ret.FlagSet.StringVar(&all, flagTag, ret.def, ret.desc)
-			ret.Flags = append(ret.Flags, helpers.PointerFlag(flagTag, ret.FlagSet))
+	if v, ok := fieldByName.Tag.Lookup(defaultTag); ok {
+		tagData.def = v
+	}
+	if v, ok := fieldByName.Tag.Lookup(EnvironmentTag); ok {
+		tagData.env = strings.ToUpper(v)
+	}
+	if v, ok := fieldByName.Tag.Lookup(jsonTag); ok {
+		tagData.json = v
+	}
+	if v, ok := fieldByName.Tag.Lookup(flagTag); ok {
+		fv := new(storage)
+		fv.Type = fieldByName
+		fv.Flag = true
+		fv.Default = tagData.def
+		fv.Env = tagData.env
+		fv.JSON = tagData.json
+		fv.Desc = tagData.desc
+		fv.Name = v
+		err := fv.Set(tagData.def)
+		if err != nil {
+			helpers.ToLog(err)
+		}
+		for _, flagTagg := range strings.Split(v, ",") {
+			tagData.FlagSet.Var(fv, flagTagg, tagData.desc)
+			fl := tagData.FlagSet.Lookup(flagTagg)
+			tagData.Flags[fl.Name] = fl
 		}
 	}
-	if v, ok := tmp.Tag.Lookup(EnvironmentTag); ok {
-		ret.env = v
+
+	if v, ok := fieldByName.Tag.Lookup(validationTag); ok {
+		tagData.valid = v
 	}
-	if v, ok := tmp.Tag.Lookup(helpTextTag); ok {
-		ret.desc = v
-	}
-	if v, ok := tmp.Tag.Lookup(validationTag); ok {
-		ret.valid = v
-	}
-	if v, ok := tmp.Tag.Lookup(jsonTag); ok {
-		ret.json = v
-	}
-	ret.ConfigFile = func(m map[string]string) tagInfo {
+
+	tagData.ConfigFile = func(m map[string]any) Tag {
 		for k, v := range m {
-			if ret.json == k {
-				for _, f := range ret.Flags {
-					f.DefValue = v
+			if tagData.json == k {
+				for _, f := range tagData.Flags {
+					f.DefValue = fmt.Sprintf("%v", v)
 					helpers.ToLog(
 						f.Value.Set(f.DefValue),
 					)
 				}
 			}
 		}
-		return ret
+		return tagData
 	}
-	ret.DummyFlags = func() tagInfo {
-		for _, flagTag := range ret.flag {
-			for _, v := range os.Args {
-				if strings.Contains(v, testTrigger) {
-					var _ = func() bool {
-						testing.Init()
-						return true
-					}()
-					break
-				}
-			}
-			if flag.Lookup(flagTag) == nil {
-				flag.StringVar(new(string), flagTag, ret.def, ret.desc)
+	tagData.DummyFlags = func() Tag {
+		for _, v := range os.Args {
+			if strings.Contains(v, testTrigger) {
+				var _ = func() bool {
+					testing.Init()
+					return true
+				}()
+				break
 			}
 		}
-		return ret
-	}
-	ret.Flag = func() tagInfo {
-		def := ret.FlagSet.Output()
-		ret.FlagSet.SetOutput(io.Discard)
-		for _, arg := range os.Args {
-			err := ret.FlagSet.Parse([]string{arg})
-			helpers.ToLogWithType(err, helpers.LogNull)
+		for _, f := range tagData.Flags {
+			if ff := flag.Lookup(f.Name); ff == nil {
+				flag.Var(f.Value, f.Name, f.Usage)
+			}
 		}
-		ret.FlagSet.SetOutput(def)
-		return ret
+		return tagData
 	}
-	ret.Env = func() tagInfo {
-		env, ok := os.LookupEnv(ret.env)
+	tagData.Env = func() Tag {
+		env, ok := os.LookupEnv(tagData.env)
 		if ok {
-			for _, f := range ret.Flags {
+			for _, f := range tagData.Flags {
 				err := f.Value.Set(env)
 				helpers.ToLog(err)
 				break
 			}
 		}
-		return ret
+		return tagData
 	}
-	ret.Valid = func() any {
-		value := ""
-		for _, f := range ret.Flags {
-			value = f.Value.String()
+
+	tagData.Flag = func() Tag {
+		def := tagData.FlagSet.Output()
+		tagData.FlagSet.SetOutput(io.Discard)
+		for _, arg := range os.Args {
+			err := tagData.FlagSet.Parse([]string{arg})
+			helpers.ToLogWithType(err, helpers.LogNull)
+		}
+		tagData.FlagSet.SetOutput(def)
+		return tagData
+	}
+
+	flag.Usage = func() {
+		PrintDefaults(flag.CommandLine, order...)
+	}
+
+	tagData.Valid = func() any {
+		var stringValueType any
+		var stringValueTypeString string
+		for _, f := range tagData.Flags {
+			stringValueType = f.Value.(*storage).Store
+			stringValueTypeString = f.Value.(*storage).StoreString
 			break
 		}
 		for _, v := range validation.Valids {
-			if ret, ok := v.Valid(ret.valid, value); ok {
-				return ret
+			if tagData.valid == fmt.Sprint(v) {
+				if ret, ok := v.Valid(stringValueTypeString, stringValueType); ok {
+					return ret
+				}
+			}
+
+		}
+		return stringValueType
+	}
+	return tagData
+}
+
+// PrintDefaults - printing help
+func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
+	yellow := color.New(color.FgYellow).SprintfFunc()
+	red := color.New(color.FgRed).SprintfFunc()
+	cyan := color.New(color.FgCyan).SprintfFunc()
+
+	var def strings.Builder
+	def.WriteString("Order of priority for settings (low -> high): \n")
+	for k, v := range o {
+		if k > 0 {
+			def.WriteString(" --> ")
+		}
+		switch v {
+		case order.Flag:
+			def.WriteString("Flags")
+		case order.File:
+			def.WriteString("Config file (JSON)")
+		case order.Env:
+			def.WriteString("Environment")
+		}
+	}
+	fmt.Fprint(f.Output(), yellow("%s \n\n", def.String()))
+
+	f.VisitAll(func(lf *flag.Flag) {
+		switch lf.Value.(type) {
+		case *storage:
+			// dummy
+		default:
+			return
+		}
+		var b strings.Builder
+		fmt.Fprintf(&b, "  %s%s", red("%s", "-"), red("%s", lf.Name)) // Two spaces before -; see next two comments.
+		name, usage := flag.UnquoteUsage(lf)
+		if len(name) > 0 {
+			b.WriteString(" ")
+		}
+		// Boolean flags of one ASCII letter are so common we
+		// treat them specially, putting their usage on the same line.
+		if b.Len() <= 4 { // space, space, '-', 'x'.
+			b.WriteString("\t")
+		} else {
+			// Four spaces before the tab triggers good alignment
+			// for both 4- and 8-space tab stops.
+			b.WriteString("\n    \t")
+		}
+		vvv := comparatorInfo(lf.Value.(*storage), o...)
+		b.WriteString(strings.ReplaceAll(cyan("%s", usage), "\n", "\n    \t"))
+		b.WriteString("\n    \t")
+		b.WriteString(fmt.Sprintf("Default value: %v\n    \t", lf.DefValue))
+		b.WriteString(strings.ReplaceAll(yellow("%s", vvv), "\n", "\n    \t"))
+		fmt.Fprint(f.Output(), b.String(), "\n")
+	})
+}
+
+func comparatorStringType(flagType flag.Value, reflectType reflect.StructField, stringValue any, onlyForMarshaller bool) (any, error) {
+	reflectTypeName := strings.ToLower(strings.TrimSpace(reflectType.Type.Name()))
+	switch reflectTypeName {
+	case "string":
+		return stringValue, nil
+	case "bool":
+		return helpers.ValidBool(fmt.Sprintf("%v", stringValue)), nil
+	case "duration":
+		return helpers.ValidDuration(fmt.Sprintf("%v", stringValue)), nil
+	case "int8", "int16", "int32", "int64", "rune":
+		return helpers.ValidInt(fmt.Sprintf("%v", stringValue)), nil
+	case "int":
+		return int(helpers.ValidInt(fmt.Sprintf("%v", stringValue))), nil
+	case "uint8", "uint16", "uint32", "uint64":
+		return helpers.ValidUint(fmt.Sprintf("%v", stringValue)), nil
+	case "uint":
+		return uint(helpers.ValidUint(fmt.Sprintf("%v", stringValue))), nil
+	case "float32", "float64":
+		return helpers.ValidFloat(fmt.Sprintf("%v", stringValue)), nil
+	default:
+		if method, ok := reflect.PointerTo(reflectType.Type).MethodByName("UnmarshalText"); ok {
+			in := make([]reflect.Value, method.Type.NumIn())
+			yyy := reflect.New(reflectType.Type).Interface()
+			in[0] = reflect.ValueOf(yyy)
+			in[1] = reflect.ValueOf([]byte(fmt.Sprintf("%v", stringValue)))
+			method.Func.Call(in)[0].Interface()
+			return in[0].Elem().Interface(), nil
+		}
+		yyy := reflect.New(reflectType.Type).Interface()
+		return reflect.ValueOf(yyy).Elem().Interface(), errors.New("parse error")
+	}
+}
+
+func comparatorInfo(t *storage, o ...order.Stages) string {
+	tt := t.Type.Type.Name()
+	fileName, err := os.Executable()
+	if err != nil {
+		fileName = "appImageBinary"
+	} else {
+		fileName = filepath.Base(fileName)
+	}
+	ret := ""
+	reflectTypeName := strings.ToLower(strings.TrimSpace(tt))
+	for _, v := range o {
+		switch reflectTypeName {
+		case "string":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "bool":
+			switch v {
+			case order.Flag:
+				ret += sampleBool(fileName, t.Name)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "duration":
+			switch v {
+			case order.Flag:
+				ret += durationSample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "int8", "int16", "int32", "int64", "rune":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "int":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "uint8", "uint16", "uint32", "uint64":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "uint":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, t.Default)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		case "float32", "float64":
+			switch v {
+			case order.Flag:
+				ret += sample(fileName, t.Name, fmt.Sprintf("%f", helpers.ValidFloat(t.Default)))
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
+			}
+		default:
+			switch v {
+			case order.Flag:
+				// ret += sample(fileName, flagName, def, flagOrder)
+			case order.File:
+				ret += sampleJson(t.JSON, t.Store)
+			case order.Env:
+				ret += sampleEnv(t.Env, t.Default)
 			}
 		}
-		return value
 	}
 	return ret
+}
+
+func sampleEnv(envValue, def string) string {
+	return fmt.Sprintf("Sample environment:\t%s=%s\n", strings.ToUpper(envValue), def)
+}
+
+func sampleJson(jsonValue string, def any) string {
+	m := make(map[string]any, 1)
+	m[jsonValue] = def
+	out, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("Sample JSON config:\t\n%s\n", string(out))
+}
+
+func sample(fileName, flagName, def string) string {
+	return fmt.Sprintf("Sample flag value:\t%s -%s=%s\n", fileName, flagName, def)
+}
+
+func sampleBool(fileName, flagName string) string {
+	return fmt.Sprintf("Sample(TRUE):\t%s -%s\n", fileName, flagName) +
+		fmt.Sprintf("Sample(FALSE):\t%s\n", fileName) +
+		extSample("TRUE", fileName, flagName, "true") +
+		extSample("FALSE", fileName, flagName, "false") +
+		extSample("TRUE", fileName, flagName, "1") +
+		extSample("FALSE", fileName, flagName, "0") +
+		extSample("TRUE", fileName, flagName, "t") +
+		extSample("FALSE", fileName, flagName, "f")
+}
+
+func extSample(value, fileName, flagName, def string) string {
+	return fmt.Sprintf("Sample(%s):\t%s -%s=%s\n", value, fileName, flagName, def)
+}
+
+func durationSample(fileName, flagName, def string) string {
+	return durationSample1(fileName, flagName, def) + durationSample2(fileName, flagName, def) + durationSample3(fileName, flagName, def)
+}
+
+func durationSample1(fileName, flagName, def string) (print string) {
+	for k, v := range durationTypesMap {
+		print += extSample(v, fileName, flagName, "1"+k)
+	}
+	return
+}
+
+func durationSample2(fileName, flagName, def string) string {
+	return extSample("1 Hour 2 Minutes and 3 Seconds", fileName, flagName, "1h2m3s")
+}
+
+func durationSample3(fileName, flagName, def string) string {
+	return extSample("111 Seconds", fileName, flagName, "111")
 }

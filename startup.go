@@ -2,11 +2,12 @@ package startup
 
 import (
 	"flag"
-	"os"
 	"reflect"
 	"sync"
 
 	"github.com/KusoKaihatsuSha/startup/internal/helpers"
+	"github.com/KusoKaihatsuSha/startup/internal/order"
+
 	tags "github.com/KusoKaihatsuSha/startup/internal/tag"
 	"github.com/KusoKaihatsuSha/startup/internal/validation"
 )
@@ -16,45 +17,18 @@ var (
 	onceFlags sync.Once = sync.Once{}
 )
 
-type stages int
-
 const (
-	// only flags
-	Flag stages = iota
-	// only config file (json)
-	File
-	// only environment
-	Env
-	// config file -> environment
-	FileEnv
-	// config file -> flags
-	FileFlag
-	// environment -> flags
-	EnvFlag
-	// environment -> config file
-	EnvFile
-	// flags -> environment
-	FlagEnv
-	// flags -> config file
-	FlagFile
-	// config file -> environment -> flags
-	FileEnvFlag
-	// config file -> flags -> environment
-	FileFlagEnv
-	Default
-	// environment -> flags -> config file
-	EnvFlagFile
-	// environment -> config file -> flags
-	EnvFileFlag
-	// flags -> environment -> config file
-	FlagEnvFile
-	// flags -> environment -> config file
-	FlagFileEnv
+	// flags
+	Flag = order.Flag
+	// config file (json)
+	File = order.File
+	// environment
+	Env = order.Env
 )
 
 // Concat structs
 type temp[T any] struct {
-	tags.TagsInfo
+	tags.Tags
 	CustomerConfigurationOfUnknownStruct31415926535 T
 	CustomerConfigurationFromFile31415926535        configuration
 }
@@ -63,12 +37,9 @@ type temp[T any] struct {
 Configuration consists of settings that are filled in at startup.
 Default fields:
   - "Config" - filepath for config file
-  - "Help" - print flags info
 */
 type configuration struct {
-	Config string `default:"" flag:"config" env:"CONFIG" text:"Config file" valid:"file"`
-	// Usage -> 'bin.app -h=true' because all flags reading as String
-	Help bool `default:"false" flag:"h,help" text:"show help info" valid:"bool"`
+	Config string `json:"startup_configuration_file" default:"config.ini" flag:"config" env:"CONFIG" help:"Configuration settings file" valid:"file"`
 }
 
 // Stages are parameters of Init function, sequence read type of settings on startup
@@ -122,170 +93,142 @@ func AddValidation(value ...validation.Valid) {
 }
 
 // GetForce will initialize scan the flags(every time), environment and config-file with the right order.
-func GetForce[T any](stages stages) T {
-	onceFlags = sync.Once{}
-	return Get[T](stages)
+func GetForce[T any](stages ...order.Stages) T {
+	return get[T](stages...).CustomerConfigurationOfUnknownStruct31415926535
+}
+
+func get[T any](stages ...order.Stages) temp[T] {
+	load := temp[T]{}
+	preload := temp[T]{}
+
+	elementsPreload := reflect.ValueOf(&preload).Elem()
+	preload.Tags = make(tags.Tags, elementsPreload.NumField())
+	preload.CustomerConfigurationFromFile31415926535 = configuration{}
+	for i := 0; i < elementsPreload.NumField(); i++ {
+		name := elementsPreload.Type().Field(i).Name
+		switch name {
+		case "CustomerConfigurationFromFile31415926535":
+			elements := reflect.ValueOf(&preload.CustomerConfigurationFromFile31415926535).Elem()
+			for ii := 0; ii < elements.NumField(); ii++ {
+				name := elements.Type().Field(ii).Name
+				preload.Tags[name] = tags.Fill[configuration](name, stages...)
+			}
+		}
+	}
+
+	elements := reflect.ValueOf(&load).Elem()
+	load.Tags = make(tags.Tags, elements.NumField())
+	load.CustomerConfigurationOfUnknownStruct31415926535 = *new(T)
+	load.CustomerConfigurationFromFile31415926535 = configuration{}
+	for i := 0; i < elements.NumField(); i++ {
+		name := elements.Type().Field(i).Name
+		switch name {
+		case "CustomerConfigurationOfUnknownStruct31415926535":
+			elements := reflect.ValueOf(&load.CustomerConfigurationOfUnknownStruct31415926535).Elem()
+			for ii := 0; ii < elements.NumField(); ii++ {
+				name := elements.Type().Field(ii).Name
+				load.Tags[name] = tags.Fill[T](name, stages...)
+			}
+		case "CustomerConfigurationFromFile31415926535":
+			elements := reflect.ValueOf(&load.CustomerConfigurationFromFile31415926535).Elem()
+			for ii := 0; ii < elements.NumField(); ii++ {
+				name := elements.Type().Field(ii).Name
+				load.Tags[name] = tags.Fill[configuration](name, stages...)
+			}
+		}
+	}
+
+	preload.flagNoParse()
+	preload.env()
+	load.CustomerConfigurationFromFile31415926535 = preload.CustomerConfigurationFromFile31415926535
+
+	for _, v := range stages {
+		switch v {
+		case Flag:
+			load.flag()
+		case File:
+			load.conf()
+		case Env:
+			load.env()
+		}
+	}
+	load.valid()
+	return load
 }
 
 /*
 Get will initialize scan the flags(one time), environment and config-file with the right order:
-  - Flag - only flag
-  - File - only config file
-  - Env - only environment
-  - FileEnv
-  - FileFlag
-  - EnvFlag
-  - EnvFile
-  - FlagEnv
-  - FlagFile
-  - FileEnvFlag
-  - FileFlagEnv = Default
-  - EnvFlagFile
-  - EnvFileFlag
-  - FlagEnvFile
-  - FlagFileEnv
+  - order.Flag - only flag
+  - order.File - only config file
+  - order.Env - only environment
 
 Caution! flags are reserved:
   - h
   - help
   - config
 */
-func Get[T any](stages stages) T {
+func Get[T any](stages ...order.Stages) T {
 	onceFlags.Do(
 		func() {
-			t := temp[T]{}
-			elements := reflect.ValueOf(&t).Elem()
-			t.TagsInfo = make(tags.TagsInfo, elements.NumField())
-			t.CustomerConfigurationOfUnknownStruct31415926535 = *new(T)
-			t.CustomerConfigurationFromFile31415926535 = configuration{}
-			for i := 0; i < elements.NumField(); i++ {
-				name := elements.Type().Field(i).Name
-				switch name {
-				case "CustomerConfigurationOfUnknownStruct31415926535":
-					elements := reflect.ValueOf(&t.CustomerConfigurationOfUnknownStruct31415926535).Elem()
-					for ii := 0; ii < elements.NumField(); ii++ {
-						name := elements.Type().Field(ii).Name
-						t.TagsInfo[name] = tags.Fill[T](name)
-					}
-				case "CustomerConfigurationFromFile31415926535":
-					elements := reflect.ValueOf(&t.CustomerConfigurationFromFile31415926535).Elem()
-					for ii := 0; ii < elements.NumField(); ii++ {
-						name := elements.Type().Field(ii).Name
-						t.TagsInfo[name] = tags.Fill[configuration](name)
-					}
-				}
-			}
-			t.dummy()
-
-			t.flag()
-			t.env()
-
-			switch stages {
-			case Flag:
-				t.flag()
-			case File:
-				t.conf()
-			case Env:
-				t.env()
-			case FileEnv:
-				t.conf()
-				t.env()
-			case FileFlag:
-				t.conf()
-				t.flag()
-			case EnvFlag:
-				t.env()
-				t.flag()
-			case EnvFile:
-				t.env()
-				t.conf()
-			case FlagEnv:
-				t.flag()
-				t.env()
-			case FlagFile:
-				t.flag()
-				t.conf()
-			case FileEnvFlag:
-				t.conf()
-				t.env()
-				t.flag()
-			case FileFlagEnv, Default:
-				t.conf()
-				t.flag()
-				t.env()
-			case EnvFlagFile:
-				t.env()
-				t.flag()
-				t.conf()
-			case EnvFileFlag:
-				t.env()
-				t.conf()
-				t.flag()
-			case FlagEnvFile:
-				t.flag()
-				t.env()
-				t.conf()
-			case FlagFileEnv:
-				t.flag()
-				t.conf()
-				t.env()
-			}
-			t.valid()
-			this = t
-			if t.CustomerConfigurationFromFile31415926535.Help {
-				flag.PrintDefaults()
-				os.Exit(0)
-			}
+			this = get[T](stages...)
 		})
 	return this.(temp[T]).CustomerConfigurationOfUnknownStruct31415926535
 }
 
-func (c *temp[T]) dummy() {
-	for _, v := range c.TagsInfo {
+func (c *temp[T]) dummy() *temp[T] {
+	for _, v := range c.Tags {
 		v.DummyFlags()
 	}
 	flag.Parse()
+	return c
 }
 
-func (c *temp[T]) flag() {
-	for _, v := range c.TagsInfo {
+func (c *temp[T]) flag() *temp[T] {
+	for _, v := range c.Tags {
 		v.Flag()
 	}
+	return c.dummy()
 }
 
-func (c *temp[T]) env() {
-	for _, v := range c.TagsInfo {
+func (c *temp[T]) flagNoParse() *temp[T] {
+	for _, v := range c.Tags {
+		v.Flag()
+	}
+	return c
+}
+
+func (c *temp[T]) env() *temp[T] {
+	for _, v := range c.Tags {
 		v.Env()
 	}
+	return c
 }
 
-// Valid check info and make some correcting
-func (c *temp[T]) valid() {
-	for k, v := range c.TagsInfo {
+// valid check info and make some correcting
+func (c *temp[T]) valid() *temp[T] {
+	for k, v := range c.Tags {
 		field := reflect.ValueOf(&c.CustomerConfigurationOfUnknownStruct31415926535).Elem().FieldByName(k)
 		if field.CanSet() {
 			field.Set(reflect.ValueOf(v.Valid()))
 		}
 	}
+	return c
 }
 
-// Conf get info from the configuration file
-func (c *temp[T]) conf() {
+// conf get info from the configuration file
+func (c *temp[T]) conf() *temp[T] {
 	confFile := ""
-	for _, f := range c.TagsInfo["Config"].Flags {
+	for _, f := range c.Tags["Config"].Flags {
 		if f.Value.String() != "" {
 			confFile = f.Value.String()
 		}
 	}
 	if confFile != "" {
-		reflect.ValueOf(&c.CustomerConfigurationFromFile31415926535).Elem().FieldByName("Config").Set(reflect.ValueOf(c.TagsInfo["Config"].Valid()))
+		reflect.ValueOf(&c.CustomerConfigurationFromFile31415926535).Elem().FieldByName("Config").Set(reflect.ValueOf(c.Tags["Config"].Valid()))
 		tmpConfig := helpers.SettingsFile(c.CustomerConfigurationFromFile31415926535.Config)
-		for _, v := range c.TagsInfo {
+		for _, v := range c.Tags {
 			v.ConfigFile(tmpConfig)
 		}
 	}
-	help := reflect.ValueOf(&c.CustomerConfigurationFromFile31415926535).Elem().FieldByName("Help")
-	if help.CanSet() {
-		help.Set(reflect.ValueOf(c.TagsInfo["Help"].Valid()))
-	}
+	return c
 }

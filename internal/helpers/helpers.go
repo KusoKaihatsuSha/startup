@@ -4,7 +4,6 @@ package helpers
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -20,26 +19,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Logger output types
 const (
 	LogOutNullTS = iota
 	LogOutFastTS
 	LogOutHumanTS
 )
 
-// Error output types
+// Logger Error output types
 const (
 	LogErrNullTS = iota + 100
 	LogErrFastTS
 	LogErrHumanTS
 )
 
-// LogNull Error null
+// LogNull Logger null
 const (
 	LogNull = 1000
 )
 
+// second as default
 const (
-	defTimePostfix = "s"
+	defaultTimePostfix = "s"
 )
 
 func init() {
@@ -47,7 +48,7 @@ func init() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 }
 
-// ToLog splitting notifications to Err and Debug.
+// ToLog splits notifications into Error and Debug(text).
 func ToLog(err any) {
 	if err == nil || err == "" {
 		return
@@ -62,7 +63,7 @@ func ToLog(err any) {
 	}
 }
 
-// ToLogWithType splitting notifications to Err and Debug. With the type of timestamps.
+// ToLogWithType splits notifications into Error and Debug(text). Using timestamped.
 func ToLogWithType(err any, typ int) {
 	if err == nil || err == "" {
 		return
@@ -84,7 +85,7 @@ func ToLogWithType(err any, typ int) {
 	}
 }
 
-// logger return logger with TS.
+// logger return Main logger with timestamp.
 func logger(typ int) zerolog.Logger {
 	switch typ {
 	case LogOutNullTS:
@@ -119,18 +120,18 @@ func CreateTmp() string {
 	return fileEnv.Name()
 }
 
-// DeleteTmp delete file in Temp folder. Actually imply delete any file by path
+// DeleteTmp delete file in temp folder. Actually means delete any file by path
 func DeleteTmp(path string) {
 	ToLog(os.RemoveAll(path))
 }
 
-// FileExist check exist
-func FileExist(f string) bool {
-	_, err := os.Stat(f)
+// FileExist checking if file exists by path
+func FileExist(path string) bool {
+	_, err := os.Stat(path)
 	return err == nil
 }
 
-// Print - clear spaces
+// Print - clear dbl spaces
 func Print(v any) {
 	fmt.Println(
 		strings.ReplaceAll(
@@ -142,7 +143,7 @@ func Print(v any) {
 }
 
 // SettingsFile return map[string]string from the setting file
-func SettingsFile(filename string) (compare map[string]string) {
+func SettingsFile(filename string) (compare map[string]any) {
 	if runtime.GOOS != "windows" {
 		filename = fmt.Sprintf("/%s", filename)
 	}
@@ -153,6 +154,7 @@ func SettingsFile(filename string) (compare map[string]string) {
 	return
 }
 
+// ValidUUID - validation on the UUID
 func ValidUUID(v string) string {
 	if tmp, err := uuid.Parse(v); err == nil {
 		return tmp.String()
@@ -160,6 +162,7 @@ func ValidUUID(v string) string {
 	return uuid.New().String()
 }
 
+// ValidInt - validation on the int
 func ValidInt(v string) int64 {
 	if tmp, err := strconv.ParseInt(v, 10, 64); err == nil {
 		return tmp
@@ -167,6 +170,15 @@ func ValidInt(v string) int64 {
 	return 0
 }
 
+// ValidUint - validation on the uint
+func ValidUint(v string) uint64 {
+	if tmp, err := strconv.ParseUint(v, 10, 64); err == nil {
+		return tmp
+	}
+	return 0
+}
+
+// ValidFloat - validation on the float
 func ValidFloat(v string) float64 {
 	if tmp, err := strconv.ParseFloat(v, 64); err == nil {
 		return tmp
@@ -174,6 +186,7 @@ func ValidFloat(v string) float64 {
 	return 0
 }
 
+// ValidBool - validation on the boolean
 func ValidBool(v string) bool {
 	if tmp, err := strconv.ParseBool(v); err == nil {
 		return tmp
@@ -181,49 +194,84 @@ func ValidBool(v string) bool {
 	return false
 }
 
-func ValidTempFile(v string) string {
-	if strings.TrimSpace(v) == "" {
-		return ""
+// CloseFile close file. Using with defer
+func CloseFile(file *os.File) {
+	if errClose := file.Close(); errClose != nil {
+		ToLog(errClose)
 	}
-	var file string
-	if runtime.GOOS == "windows" {
-		check := strings.FieldsFunc(v, func(ss rune) bool {
-			return strings.ContainsAny(string(ss), `\/`)
-		})
-		tmpString := filepath.Join(os.TempDir(), check[len(check)-1])
-		file = tmpString
-	} else {
-		file = "/" + v
-	}
-	return file
 }
 
-func ValidFile(v string) string {
-	check := strings.FieldsFunc(v, func(ss rune) bool {
-		return strings.ContainsAny(string(ss), `\/`)
+// FilepathElements - split filename using separate symbols
+func FilepathElements(path string) []string {
+	return strings.FieldsFunc(path, func(symbols rune) bool {
+		return strings.ContainsAny(string(symbols), `\/`)
 	})
-	if strings.TrimSpace(v) == "" {
-		return ""
-	}
-	if !FileExist(v) {
-		ToLog(fmt.Sprintf("file '%s' not found", v))
-	}
-	return strings.Join(check, string(os.PathSeparator))
 }
 
-func ValidTimer(v string) time.Duration {
+// CreateFile create file or temp file
+func CreateFile(path string) string {
+	if path == "" {
+		file, err := os.CreateTemp("", "*.tmpgo")
+		defer CloseFile(file)
+		if err != nil {
+			ToLog(fmt.Sprintf("file '%s' not created", path))
+		}
+		return file.Name()
+	} else {
+		file, err := os.Create(path)
+		defer CloseFile(file)
+		if err != nil {
+			ToLog(fmt.Sprintf("file '%s' not created", path))
+		}
+		return file.Name()
+	}
+}
+
+// ValidTempFile - validation type.
+// create same name file in Temp folder or create random temp file
+func ValidTempFile(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return CreateFile("")
+	}
+	elementsOfPath := FilepathElements(filename)
+	newFilepath := filepath.Join(os.TempDir(), elementsOfPath[len(elementsOfPath)-1])
+	if !FileExist(newFilepath) {
+		CreateFile(newFilepath)
+	}
+	return newFilepath
+}
+
+// ValidFile - validation type.
+// Create file in not exist.
+func ValidFile(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return CreateFile("")
+	}
+	elementsOfPath := FilepathElements(filename)
+	newFilepath := filepath.Join(elementsOfPath...)
+	if !FileExist(newFilepath) {
+		CreateFile(newFilepath)
+	}
+	return newFilepath
+}
+
+// ValidDuration - validation on the duration
+func ValidDuration(v string) time.Duration {
 	if v[0] == '-' || v[0] == '+' {
 		v = v[1:]
 	}
 	l := len(v) - 1
 	if '0' <= v[l] && v[l] <= '9' {
-		v += defTimePostfix
+		v += defaultTimePostfix
 	}
 	tmp, err := time.ParseDuration(v)
 	ToLog(err)
 	return tmp
 }
 
+// ValidURL - validation on the url
 func ValidURL(v string) string {
 	// trim prefix
 	re := regexp.MustCompile(`^.*(://|^)[^/]+`)
@@ -264,15 +312,4 @@ func ValidURL(v string) string {
 		return address + ":80"
 	}
 	return address + ":" + correctPort
-}
-
-// pointerFlag return the flag pointer
-func PointerFlag(name string, fs *flag.FlagSet) *flag.Flag {
-	var current *flag.Flag
-	fs.VisitAll(func(f *flag.Flag) {
-		if f.Name == name {
-			current = f
-		}
-	})
-	return current
 }

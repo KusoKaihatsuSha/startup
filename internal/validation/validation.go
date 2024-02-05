@@ -7,10 +7,10 @@ var (
 )
 
 type Valid interface {
-	Valid(string, string) (any, bool)
+	Valid(string, any) (any, bool)
 }
 
-// AddValidation - add custom validation. Example in interface docs.
+// Add - add custom validation. Example in interface docs.
 func Add(value ...Valid) {
 	Valids = append(Valids, value...)
 }
@@ -52,66 +52,42 @@ func init() {
 	)
 }
 
-// Implements default validations
-func (o tmpFileValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidTempFile(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o tmpFileValid) Valid(def string, value any) (any, bool) {
+	return helpers.ValidTempFile(value.(string)), true
 }
 
-// Implements default validations
-func (o fileValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidFile(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o fileValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidFile(value.(string)), true
 }
 
-// Implements default validations
-func (o urlValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidURL(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o urlValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidURL(value.(string)), true
 }
 
-// Implements default validations
-func (o boolValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidBool(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o boolValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidBool(value.(string)), true
 }
 
-// Implements default validations
-func (o intValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidInt(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o intValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidInt(value.(string)), true
 }
 
-// Implements default validations
-func (o floatValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidFloat(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o floatValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidFloat(value.(string)), true
 }
 
-// Implements default validations
-func (o durationValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidTimer(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o durationValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidDuration(value.(string)), true
 }
 
-// Implements default validations
-func (o uuidValid) Valid(key, value string) (any, bool) {
-	if key == string(o) {
-		return helpers.ValidUUID(value), true
-	}
-	return nil, false
+// Valid Implements default validations
+func (o uuidValid) Valid(key string, value any) (any, bool) {
+	return helpers.ValidUUID(value.(string)), true
 }
