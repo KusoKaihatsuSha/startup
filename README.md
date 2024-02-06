@@ -10,6 +10,60 @@
 go get github.com/KusoKaihatsuSha/startup
 ```
 
+### Update
+```shell
+go get -u
+go mod tidy
+```
+
+### Usage
+Use annotations within struct fields such as:  
+```go
+TestString string `json:"json-tag-in-file" default:"default-value" flag:"flag-name" env:"ENV_NAME" help:"description"`
+```
+Get data with custom order(Env => Flag):  
+```go
+filledConfig := startup.GetForce[Configuration](
+    startup.Env,
+    startup.Flag,
+)
+```
+
+
+### Quick Example
+```go
+// Some struct
+type Configuration struct {
+    TestString   string        `json:"test-string"   default:"abcd"          flag:"test-string"   env:"TEST_STR"      help:"string"`
+    TestInt      int64         `json:"test-int"      default:"11"            flag:"test-int"      env:"TEST_INT"      help:"int"`
+    TestDuration time.Duration `json:"test-duration" default:"1s"            flag:"test-duration" env:"TEST_DURATION" help:"duration"`
+    TestBool     bool          `json:"test-bool"     default:"false"         flag:"test-bool"     env:"TEST_BOOL"     help:"bool"`
+    TestFloat    float64       `json:"test-float"    default:"1"             flag:"test-float"    env:"TEST_FLOAT"    help:"float"`
+    TestUint     uint64        `json:"test-uint"     default:"111"           flag:"test-uint"     env:"TEST_UINT"     help:"uint"`
+}
+
+func main() {
+// Emulated settings at startup
+os.Setenv("TEST_STR", "dcba")
+os.Setenv("TEST_UINT", "999")
+os.Setenv("TEST_DURATION", "11h")
+os.Args = append(
+    os.Args,
+    "-test-bool",
+    "-test-uint=741",
+)
+
+// Get filled configs (ORDER: Environment -> Flags ).
+config := startup.GetForce[Configuration](
+    startup.Env,
+    startup.Flag,
+)
+
+// Print result => {dcba 11 11h0m0s true 1 741}
+fmt.Printf("%v\n", config)
+}
+```
+
 ### Example
 ```go
 package main
@@ -123,7 +177,7 @@ func main() {
 }
 ```
 
-### Default validations (in tag 'valid' inside annotation)
+### Default validations (in tag `valid` inside annotation)
   - `tmp_file` - Check exist inside Temp folder and create if not exist  (string in struct)
   - `file` - Check exist the filepath and create if not exist (string in struct)
   - `url` - Check url is correct (string in struct)
