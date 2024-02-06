@@ -239,7 +239,7 @@ func ValidConfigFile(filename string) string {
 		return ""
 	}
 	elementsOfPath := FilepathElements(filename)
-	newFilepath := filepath.Join(os.TempDir(), elementsOfPath[len(elementsOfPath)-1])
+	newFilepath := filepath.Join(elementsOfPath...)
 	if !FileExist(newFilepath) {
 		return ""
 	}
