@@ -2,19 +2,16 @@
 
 
 # Package `startup`
-
 > Use the package's functionality to simplify the use of flags, environments and config file when starting the application.  
 > Fill custom Golang `struct` from environments, flags or configuration file (JSON) with desired order.
 
 ### Install
-
 ```shell
 go get github.com/KusoKaihatsuSha/startup
 ```
 
 ### Example
-
-```golang
+```go
 package main
 
 import (
@@ -126,18 +123,136 @@ func main() {
 }
 ```
 
-### **Default validations** (in tag 'valid' inside annotation)
+### Default validations (in tag 'valid' inside annotation)
+  - `tmp_file` - Check exist inside Temp folder and create if not exist  (string in struct)
+  - `file` - Check exist the filepath and create if not exist (string in struct)
+  - `url` - Check url is correct (string in struct)
+  - `bool` - Parse Bool (bool in struct)
+  - `int` - Parse int (int64 in struct)
+  - `float` - Parse float (float64 in struct)
+  - `duration` - Parse duration (time.Duration in struct)
+  - `uuid` - Check uuid. Return new if not exist (string in struct)
 
-  - 'tmp_file' - As 'file', but if empty returm file from Temp folder  (string in struct)
-  - 'file' - Check exist the filepath (string in struct)
-  - 'url' - Check url is correct (string in struct)
-  - 'bool' - Parse Bool (bool in struct)
-  - 'int' - Parse int (int64 in struct)
-  - 'float' - Parse float (float64 in struct)
-  - 'duration' - Parse duration (time.Duration in struct)
-  - 'uuid' - Check uuid. Return new if not exist (string in struct)
-
-### **Caution**
-
+### Caution
 flags are reserved:
-  - config
+  - `config`
+
+### Print `-h` or `-help` tag example
+```
+Order of priority for settings (low -> high):
+Config file (JSON) --> Environment --> Flags
+
+  -config
+        Configuration settings file
+        Default value: config.ini
+        Sample JSON config:
+        {
+          "startup_configuration_file": "config.ini"
+        }
+        Sample environment:     CONFIG=config.ini
+        Sample flag value:      testee.exe -config=config.ini
+
+  -test-bool
+        bool
+        Default value: true
+        Sample JSON config:
+        {
+          "test-bool": true
+        }
+        Sample environment:     TEST_BOOL=true
+        Sample(TRUE):   testee.exe -test-bool
+        Sample(FALSE):  testee.exe
+        Sample(TRUE):   testee.exe -test-bool=true
+        Sample(FALSE):  testee.exe -test-bool=false
+        Sample(TRUE):   testee.exe -test-bool=1
+        Sample(FALSE):  testee.exe -test-bool=0
+        Sample(TRUE):   testee.exe -test-bool=t
+        Sample(FALSE):  testee.exe -test-bool=f
+
+  -test-duration
+        duration
+        Default value: 1s
+        Sample JSON config:
+        {
+          "test-duration": 1000000000
+        }
+        Sample environment:     TEST_DURATION=1s
+        Sample(Millisecond):    testee.exe -test-duration=1ms
+        Sample(Second): testee.exe -test-duration=1s
+        Sample(Minute): testee.exe -test-duration=1m
+        Sample(Hour):   testee.exe -test-duration=1h
+        Sample(Nanosecond):     testee.exe -test-duration=1ns
+        Sample(Microsecond):    testee.exe -test-duration=1us
+        Sample(1 Hour 2 Minutes and 3 Seconds): testee.exe -test-duration=1h2m3s
+        Sample(111 Seconds):    testee.exe -test-duration=111
+
+  -test-email
+        email
+        Default value: a@b.c
+        Sample JSON config:
+        {
+          "test-email": "a@b.c"
+        }
+        Sample environment:     TEST_EMAIL=a@b.c
+        Sample flag value:      testee.exe -test-email=a@b.c
+
+  -test-float
+        float
+        Default value: 1
+        Sample JSON config:
+        {
+          "test-float": 1
+        }
+        Sample environment:     TEST_FLOAT=1
+        Sample flag value:      testee.exe -test-float=1.000000
+
+  -test-int
+        int
+        Default value: 11
+        Sample JSON config:
+        {
+          "test-int": 11
+        }
+        Sample environment:     TEST_INT=11
+        Sample flag value:      testee.exe -test-int=11
+
+  -test-ip
+        ip
+        Default value: 127.0.0.1
+        Sample JSON config:
+        {
+          "test-ip": "127.0.0.1"
+        }
+        Sample environment:     TEST_IP=127.0.0.1
+
+  -test-json
+        json
+        Default value: {default_001 default_002}
+        Sample JSON config:
+        {
+          "test-json": {
+            "param1": "default_001",
+            "param2": "default_002"
+          }
+        }
+        Sample environment:     TEST_JSON={"param1":"default_001","param2":"default_002"}
+
+  -test-slice
+        slice
+        Default value: []
+        Sample JSON config:
+        {
+          "test-slice": null
+        }
+        Sample environment:     TEST_SLICE=1,2,3,4;5;6
+
+  -test-uint
+        uint
+        Default value: 111
+        Sample JSON config:
+        {
+          "test-uint": 111
+        }
+        Sample environment:     TEST_UINT=111
+        Sample flag value:      testee.exe -test-uint=111
+```

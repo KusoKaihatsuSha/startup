@@ -49,17 +49,32 @@ func init() {
 }
 
 // ToLog splits notifications into Error and Debug(text).
-func ToLog(err any) {
+// func ToLog(err any) {
+// 	if err == nil || err == "" {
+// 		return
+// 	}
+// 	switch val := err.(type) {
+// 	case error:
+// 		if val.Error() != "" {
+// 			log.Error().Msgf("%v", val)
+// 		}
+// 	default:
+// 		log.Debug().Msgf("%v", val)
+// 	}
+// }
+
+// ToLog splits notifications into Error and Debug(text).
+func ToLog(err any, text ...string) {
 	if err == nil || err == "" {
 		return
 	}
 	switch val := err.(type) {
 	case error:
 		if val.Error() != "" {
-			log.Error().Msgf("%v", val)
+			log.Error().Msgf("%s |-> %v", text, val)
 		}
 	default:
-		log.Debug().Msgf("%v", val)
+		log.Debug().Msgf("%s |-> %v", text, val)
 	}
 }
 
@@ -107,21 +122,8 @@ func logger(typ int) zerolog.Logger {
 	}
 }
 
-// CreateTmp create file in Temp folder
-func CreateTmp() string {
-	fileEnv, err := os.CreateTemp("", "tmp_golang_")
-	ToLog(err)
-	defer func(path string) {
-		ToLog(fileEnv.Close())
-	}(fileEnv.Name())
-	if runtime.GOOS != "windows" {
-		return string(os.PathSeparator) + fileEnv.Name()
-	}
-	return fileEnv.Name()
-}
-
-// DeleteTmp delete file in temp folder. Actually means delete any file by path
-func DeleteTmp(path string) {
+// DeleteFile delete file in temp folder. Actually means delete any file by path
+func DeleteFile(path string) {
 	ToLog(os.RemoveAll(path))
 }
 
@@ -131,26 +133,17 @@ func FileExist(path string) bool {
 	return err == nil
 }
 
-// Print - clear dbl spaces
-func Print(v any) {
-	fmt.Println(
-		strings.ReplaceAll(
-			fmt.Sprint(v),
-			"  ",
-			" ",
-		),
-	)
-}
-
 // SettingsFile return map[string]string from the setting file
 func SettingsFile(filename string) (compare map[string]any) {
 	if runtime.GOOS != "windows" {
 		filename = fmt.Sprintf("/%s", filename)
 	}
-	f, err := os.ReadFile(filename)
-	ToLog(err)
-	err = json.Unmarshal(f, &compare)
-	ToLog(err)
+	if FileExist(filename) {
+		f, err := os.ReadFile(filename)
+		ToLog(err, fmt.Sprintf("settings file '%s' is not access", filename))
+		err = json.Unmarshal(f, &compare)
+		ToLog(err, fmt.Sprintf("settings file '%s' parse error", filename))
+	}
 	return
 }
 
@@ -196,8 +189,8 @@ func ValidBool(v string) bool {
 
 // CloseFile close file. Using with defer
 func CloseFile(file *os.File) {
-	if errClose := file.Close(); errClose != nil {
-		ToLog(errClose)
+	if err := file.Close(); err != nil {
+		ToLog(err, fmt.Sprintf("file '%s' close error", file.Name()))
 	}
 }
 
@@ -213,16 +206,12 @@ func CreateFile(path string) string {
 	if path == "" {
 		file, err := os.CreateTemp("", "*.tmpgo")
 		defer CloseFile(file)
-		if err != nil {
-			ToLog(fmt.Sprintf("file '%s' not created", path))
-		}
+		ToLog(err, fmt.Sprintf("file '%s' not created", path))
 		return file.Name()
 	} else {
 		file, err := os.Create(path)
 		defer CloseFile(file)
-		if err != nil {
-			ToLog(fmt.Sprintf("file '%s' not created", path))
-		}
+		ToLog(err, fmt.Sprintf("file '%s' not created", path))
 		return file.Name()
 	}
 }
@@ -282,7 +271,7 @@ func ValidDuration(v string) time.Duration {
 		v += defaultTimePostfix
 	}
 	tmp, err := time.ParseDuration(v)
-	ToLog(err)
+	ToLog(err, fmt.Sprintf("duration '%s' parse error", v))
 	return tmp
 }
 

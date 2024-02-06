@@ -40,11 +40,11 @@ type TestJSON struct {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (t *TestJSON) UnmarshalText(text []byte) error {
 	type Tmp TestJSON
-	tmp := (*Tmp)(t)
-	if err := json.Unmarshal(text, tmp); err != nil {
+	tmp := Tmp(*t)
+	if err := json.Unmarshal(text, &tmp); err != nil {
 		return err
 	}
-	t = (*TestJSON)(tmp)
+	*t = TestJSON(tmp)
 	return nil
 }
 
@@ -53,12 +53,12 @@ type emailValid string
 
 var emailValidation emailValid = "email"
 
-func (o emailValid) Valid(def string, value any) (any, bool) {
-	matchString, err := regexp.MatchString("(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])", def)
+func (o emailValid) Valid(stringValue string, value any) (any, bool) {
+	matchString, err := regexp.MatchString("(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])", stringValue)
 	if matchString && err == nil {
 		return value, true
 	}
-	return def + "@example.com", true
+	return stringValue + "@example.com", true
 }
 
 // custom slice validation
@@ -66,8 +66,9 @@ type testValid string
 
 var testValidation testValid = "test"
 
-func (o testValid) Valid(def string, value any) (any, bool) {
-	newValue := strings.ReplaceAll(def, ";", ",")
+func (o testValid) Valid(stringValue string, value any) (any, bool) {
+	// 'value' can be used for Type check
+	newValue := strings.ReplaceAll(stringValue, ";", ",")
 	return strings.Split(newValue, ","), true
 }
 
@@ -76,7 +77,7 @@ type maxValid string
 
 var maxValidation maxValid = "max10"
 
-func (o maxValid) Valid(def string, value any) (any, bool) {
+func (o maxValid) Valid(stringValue string, value any) (any, bool) {
 	if value.(int64) > 10 {
 		return int64(10), true
 	}
@@ -90,12 +91,14 @@ func Example_configOrder() {
 	testDataEnv := `{
                  "test-order": "http://file-env"
          }`
-	fileFlag := helpers.CreateTmp()
+	fileFlag := helpers.CreateFile("")
+	defer helpers.DeleteFile(fileFlag)
 	err := os.WriteFile(fileFlag, []byte(testDataFlag), 0755)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fileEnv := helpers.CreateTmp()
+	fileEnv := helpers.CreateFile("")
+	defer helpers.DeleteFile(fileFlag)
 	err = os.WriteFile(fileEnv, []byte(testDataEnv), 0755)
 
 	if err != nil {

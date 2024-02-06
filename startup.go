@@ -14,15 +14,15 @@ import (
 
 var (
 	this      any
-	onceFlags sync.Once = sync.Once{}
+	onceFlags = sync.Once{}
 )
 
 const (
-	// flags
+	// Flag - from flags
 	Flag = order.Flag
-	// config file (json)
+	// File with configs (json)
 	File = order.File
-	// environment
+	// Env - from environment
 	Env = order.Env
 )
 
@@ -42,8 +42,6 @@ type configuration struct {
 	Config string `json:"startup_configuration_file" default:"config.ini" flag:"config" env:"CONFIG" help:"Configuration settings file" valid:"default_configuration_file"`
 }
 
-// Stages are parameters of Init function, sequence read type of settings on startup
-
 /*
 AddValidation using for add custom validation
 
@@ -55,44 +53,51 @@ Example:
 		}
 		// Custom type.
 		type testValid string
-		// Custom variable.
+		// Custom validation.
 		var testValidation testValid = "test"
 		// Custom method.
-		func (o testValid) Valid(key, value string) (any, bool) {
-				return []string{value + "+++"}, true
-			}
+		func (o testValid) Valid(stringValue string, value any) (any, bool) {
+			return []string{stringValue + "+++"}, true
+		}
+
 	    // add custom validation
 		func MyFunc() {
 			...
 			startup.AddValidation(testValidation)
 			...
-			// Implement all types of configs (Environment -> Flags -> Json file).
-			configurations := startup.InitForce[Test](startup.EnvFlagFile)
+			// Implement all types of configs (Json file -> Environment -> Flags).
+			configurations := startup.Get[Test](startup.File, startup.Env, startup.Flag)
 			// Test print.
 			fmt.Println(configurations)
 		}
 
 Default validations:
-  - 'tmp_file' - As 'file', but if empty returm file from Temp folder  (string in struct)
-  - 'file' - Check exist the filepath (string in struct)
-  - 'url' - Check url is correct (string in struct)
-  - 'bool' - Parse Bool (bool in struct)
-  - 'int' - Parse int (int64 in struct)
-  - 'float' - Parse float (float64 in struct)
-  - 'duration' - Parse duration (time.Duration in struct)
-  - 'uuid' - Check uuid. Return new if not exist (string in struct)
+  - `tmp_file` - Check exist inside Temp folder and create if not exist  (string in struct)
+  - `file` - Check exist the filepath and create if not exist (string in struct)
+  - `url` - Check url is correct (string in struct)
+  - `bool` - Parse Bool (bool in struct)
+  - `int` - Parse int (int64 in struct)
+  - `float` - Parse float (float64 in struct)
+  - `duration` - Parse duration (time.Duration in struct)
+  - `uuid` - Check uuid. Return new if not exist (string in struct)
 
 Caution:
 flags are reserved:
-  - h
-  - help
   - config
 */
 func AddValidation(value ...validation.Valid) {
 	validation.Add(value...)
 }
 
-// GetForce will initialize scan the flags(every time), environment and config-file with the right order.
+/*
+GetForce will initialize scan the flags, environment and config-file with the right order:
+  - order.Flag - flag
+  - order.File - config file
+  - order.Env - environment
+
+Caution! flags are reserved:
+  - config
+*/
 func GetForce[T any](stages ...order.Stages) T {
 	return get[T](stages...).CustomerConfigurationOfUnknownStruct31415926535
 }
@@ -158,13 +163,11 @@ func get[T any](stages ...order.Stages) temp[T] {
 
 /*
 Get will initialize scan the flags(one time), environment and config-file with the right order:
-  - order.Flag - only flag
-  - order.File - only config file
-  - order.Env - only environment
+  - order.Flag - flag
+  - order.File - config file
+  - order.Env - environment
 
 Caution! flags are reserved:
-  - h
-  - help
   - config
 */
 func Get[T any](stages ...order.Stages) T {

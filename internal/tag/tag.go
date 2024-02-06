@@ -62,7 +62,6 @@ type Annotation struct {
 	desc  string
 	env   string
 	def   string
-	flag  []string
 }
 
 type storage struct {
@@ -78,16 +77,16 @@ type storage struct {
 }
 
 // Set 'flag' interface implementation
-func (p *storage) Set(s string) error {
+func (s *storage) Set(value string) error {
 	var err error
-	p.Store, err = comparatorStringType(nil, p.Type, s, p.Flag)
-	p.StoreString = s
+	s.Store, err = comparatorStringType(nil, s.Type, value, s.Flag)
+	s.StoreString = value
 	return err
 }
 
 // String - Stringer interface implementation
-func (t *storage) String() string {
-	return fmt.Sprint(t.Store)
+func (s *storage) String() string {
+	return fmt.Sprint(s.Store)
 }
 
 // Fill - filling the 'tag'
@@ -125,12 +124,10 @@ func Fill[T any](field string, order ...order.Stages) Tag {
 		fv.Desc = tagData.desc
 		fv.Name = v
 		err := fv.Set(tagData.def)
-		if err != nil {
-			helpers.ToLog(err)
-		}
-		for _, flagTagg := range strings.Split(v, ",") {
-			tagData.FlagSet.Var(fv, flagTagg, tagData.desc)
-			fl := tagData.FlagSet.Lookup(flagTagg)
+		helpers.ToLog("", fmt.Sprintf("set flag data '%s' %v", tagData.def, err)) // skip info and error parse
+		for _, fTag := range strings.Split(v, ",") {
+			tagData.FlagSet.Var(fv, fTag, tagData.desc)
+			fl := tagData.FlagSet.Lookup(fTag)
 			tagData.Flags[fl.Name] = fl
 		}
 	}
@@ -144,9 +141,8 @@ func Fill[T any](field string, order ...order.Stages) Tag {
 			if tagData.json == k {
 				for _, f := range tagData.Flags {
 					f.DefValue = fmt.Sprintf("%v", v)
-					helpers.ToLog(
-						f.Value.Set(f.DefValue),
-					)
+					err := f.Value.Set(f.DefValue)
+					helpers.ToLog(err, fmt.Sprintf("set flag data '%s' error", f.DefValue))
 				}
 			}
 		}
@@ -174,7 +170,7 @@ func Fill[T any](field string, order ...order.Stages) Tag {
 		if ok {
 			for _, f := range tagData.Flags {
 				err := f.Value.Set(env)
-				helpers.ToLog(err)
+				helpers.ToLog(err, fmt.Sprintf("set flag data '%s' error", env))
 				break
 			}
 		}
@@ -238,8 +234,8 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 			def.WriteString("Environment")
 		}
 	}
-	fmt.Fprint(f.Output(), yellow("%s \n\n", def.String()))
-
+	_, err := fmt.Fprint(f.Output(), yellow("%s \n\n", def.String()))
+	helpers.ToLog(err, fmt.Sprintf("print data '%s' error", def.String()))
 	f.VisitAll(func(lf *flag.Flag) {
 		switch lf.Value.(type) {
 		case *storage:
@@ -248,7 +244,9 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 			return
 		}
 		var b strings.Builder
-		fmt.Fprintf(&b, "  %s%s", red("%s", "-"), red("%s", lf.Name)) // Two spaces before -; see next two comments.
+		_, errPrintf := fmt.Fprintf(&b, "  %s%s", red("%s", "-"), red("%s", lf.Name))
+		helpers.ToLog(errPrintf, fmt.Sprintf("print data error"))
+		// Two spaces before -; see next two comments.
 		name, usage := flag.UnquoteUsage(lf)
 		if len(name) > 0 {
 			b.WriteString(" ")
@@ -267,7 +265,8 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 		b.WriteString("\n    \t")
 		b.WriteString(fmt.Sprintf("Default value: %v\n    \t", lf.DefValue))
 		b.WriteString(strings.ReplaceAll(yellow("%s", vvv), "\n", "\n    \t"))
-		fmt.Fprint(f.Output(), b.String(), "\n")
+		_, errPrint := fmt.Fprint(f.Output(), b.String(), "\n")
+		helpers.ToLog(errPrint, fmt.Sprintf("print data error"))
 	})
 }
 
@@ -436,20 +435,20 @@ func extSample(value, fileName, flagName, def string) string {
 }
 
 func durationSample(fileName, flagName, def string) string {
-	return durationSample1(fileName, flagName, def) + durationSample2(fileName, flagName, def) + durationSample3(fileName, flagName, def)
+	return durationSample1(fileName, flagName) + durationSample2(fileName, flagName) + durationSample3(fileName, flagName)
 }
 
-func durationSample1(fileName, flagName, def string) (print string) {
+func durationSample1(fileName, flagName string) (print string) {
 	for k, v := range durationTypesMap {
 		print += extSample(v, fileName, flagName, "1"+k)
 	}
 	return
 }
 
-func durationSample2(fileName, flagName, def string) string {
+func durationSample2(fileName, flagName string) string {
 	return extSample("1 Hour 2 Minutes and 3 Seconds", fileName, flagName, "1h2m3s")
 }
 
-func durationSample3(fileName, flagName, def string) string {
+func durationSample3(fileName, flagName string) string {
 	return extSample("111 Seconds", fileName, flagName, "111")
 }
