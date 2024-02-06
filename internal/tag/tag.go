@@ -81,7 +81,9 @@ func (s *storage) Set(value string) error {
 	var err error
 	s.Store, err = comparatorStringType(nil, s.Type, value, s.Flag)
 	s.StoreString = value
-	return err
+	helpers.ToLog("", fmt.Sprintf("set flag data '%s' %v", value, err)) // skip info and error parse
+	// skip error for custom types
+	return nil
 }
 
 // String - Stringer interface implementation
@@ -125,6 +127,17 @@ func Fill[T any](field string, order ...order.Stages) Tag {
 		fv.Name = v
 		err := fv.Set(tagData.def)
 		helpers.ToLog("", fmt.Sprintf("set flag data '%s' %v", tagData.def, err)) // skip info and error parse
+
+		// handy bool flag without argument
+		if fv.Type.Type.Name() == "bool" {
+			for i, arg := range os.Args {
+				// only flag
+				if arg == "-"+fv.Name {
+					os.Args[i] = arg + "=true"
+				}
+			}
+		}
+
 		for _, fTag := range strings.Split(v, ",") {
 			tagData.FlagSet.Var(fv, fTag, tagData.desc)
 			fl := tagData.FlagSet.Lookup(fTag)
@@ -421,7 +434,7 @@ func sample(fileName, flagName, def string) string {
 
 func sampleBool(fileName, flagName string) string {
 	return fmt.Sprintf("Sample(TRUE):\t%s -%s\n", fileName, flagName) +
-		fmt.Sprintf("Sample(FALSE):\t%s\n", fileName) +
+		fmt.Sprintf("Sample(default):\t%s\n", fileName) +
 		extSample("TRUE", fileName, flagName, "true") +
 		extSample("FALSE", fileName, flagName, "false") +
 		extSample("TRUE", fileName, flagName, "1") +

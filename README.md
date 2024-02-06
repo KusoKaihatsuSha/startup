@@ -160,8 +160,8 @@ Config file (JSON) --> Environment --> Flags
           "test-bool": true
         }
         Sample environment:     TEST_BOOL=true
-        Sample(TRUE):   testee.exe -test-bool
-        Sample(FALSE):  testee.exe
+        Sample(TRUE):     testee.exe -test-bool
+        Sample(default):  testee.exe
         Sample(TRUE):   testee.exe -test-bool=true
         Sample(FALSE):  testee.exe -test-bool=false
         Sample(TRUE):   testee.exe -test-bool=1
