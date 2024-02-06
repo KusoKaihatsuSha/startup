@@ -39,7 +39,7 @@ Default fields:
   - "Config" - filepath for config file
 */
 type configuration struct {
-	Config string `json:"startup_configuration_file" default:"config.ini" flag:"config" env:"CONFIG" help:"Configuration settings file" valid:"file"`
+	Config string `json:"startup_configuration_file" default:"config.ini" flag:"config" env:"CONFIG" help:"Configuration settings file" valid:"default_configuration_file"`
 }
 
 // Stages are parameters of Init function, sequence read type of settings on startup

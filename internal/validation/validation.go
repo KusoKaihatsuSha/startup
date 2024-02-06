@@ -16,31 +16,34 @@ func Add(value ...Valid) {
 }
 
 var (
-	tmpFileValidation  tmpFileValid  = "tmp_file"
-	fileValidation     fileValid     = "file"
-	urlValidation      urlValid      = "url"
-	boolValidation     boolValid     = "bool"
-	intValidation      intValid      = "int"
-	floatValidation    floatValid    = "float"
-	durationValidation durationValid = "duration"
-	uuidValidation     uuidValid     = "uuid"
+	defFileConfigValidation defFileConfigValid = "default_configuration_file"
+	tmpFileValidation       tmpFileValid       = "tmp_file"
+	fileValidation          fileValid          = "file"
+	urlValidation           urlValid           = "url"
+	boolValidation          boolValid          = "bool"
+	intValidation           intValid           = "int"
+	floatValidation         floatValid         = "float"
+	durationValidation      durationValid      = "duration"
+	uuidValidation          uuidValid          = "uuid"
 )
 
 // Default validations
 type (
-	tmpFileValid  string
-	fileValid     string
-	urlValid      string
-	boolValid     string
-	intValid      string
-	floatValid    string
-	durationValid string
-	uuidValid     string
+	defFileConfigValid string
+	tmpFileValid       string
+	fileValid          string
+	urlValid           string
+	boolValid          string
+	intValid           string
+	floatValid         string
+	durationValid      string
+	uuidValid          string
 )
 
 func init() {
 	// Will add the default validation checks in the handle of the struct
 	Add(
+		defFileConfigValidation,
 		tmpFileValidation,
 		fileValidation,
 		urlValidation,
@@ -50,6 +53,11 @@ func init() {
 		durationValidation,
 		uuidValidation,
 	)
+}
+
+// Valid Implements default validations
+func (o defFileConfigValid) Valid(def string, value any) (any, bool) {
+	return helpers.ValidConfigFile(value.(string)), true
 }
 
 // Valid Implements default validations

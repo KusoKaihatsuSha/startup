@@ -242,6 +242,21 @@ func ValidTempFile(filename string) string {
 	return newFilepath
 }
 
+// ValidConfigFile - validation type.
+// create same name file in Temp folder or create random temp file
+func ValidConfigFile(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return ""
+	}
+	elementsOfPath := FilepathElements(filename)
+	newFilepath := filepath.Join(os.TempDir(), elementsOfPath[len(elementsOfPath)-1])
+	if !FileExist(newFilepath) {
+		return ""
+	}
+	return newFilepath
+}
+
 // ValidFile - validation type.
 // Create file in not exist.
 func ValidFile(filename string) string {
