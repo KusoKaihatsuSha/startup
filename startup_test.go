@@ -39,12 +39,10 @@ type TestJSON struct {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (t *TestJSON) UnmarshalText(text []byte) error {
-	type Tmp TestJSON
-	tmp := Tmp(*t)
-	if err := json.Unmarshal(text, &tmp); err != nil {
+	type Tmp *TestJSON
+	if err := json.Unmarshal(text, Tmp(t)); err != nil {
 		return err
 	}
-	*t = TestJSON(tmp)
 	return nil
 }
 
@@ -217,7 +215,8 @@ func Example_configOrder() {
 		"|",
 	)
 
-	err = os.Unsetenv("CONFIG")
+	errEnv := os.Unsetenv("CONFIG")
+	helpers.ToLog(errEnv)
 	fmt.Printf(
 		"ORDER %s %s %s\n",
 		"env ↣ "+
@@ -229,8 +228,8 @@ func Example_configOrder() {
 		).TestOrder,
 		"| not filepath in env CONFIG",
 	)
-	err = os.Setenv("CONFIG", fileEnv)
-
+	errEnv = os.Setenv("CONFIG", fileEnv)
+	helpers.ToLog(errEnv)
 	fmt.Printf(
 		"ORDER %s %s %s\n",
 		"flag ↣ "+
