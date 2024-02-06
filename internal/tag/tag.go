@@ -245,7 +245,7 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 		}
 		var b strings.Builder
 		_, errPrintf := fmt.Fprintf(&b, "  %s%s", red("%s", "-"), red("%s", lf.Name))
-		helpers.ToLog(errPrintf, fmt.Sprintf("print data error"))
+		helpers.ToLog(errPrintf, "print data error")
 		// Two spaces before -; see next two comments.
 		name, usage := flag.UnquoteUsage(lf)
 		if len(name) > 0 {
@@ -266,7 +266,7 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 		b.WriteString(fmt.Sprintf("Default value: %v\n    \t", lf.DefValue))
 		b.WriteString(strings.ReplaceAll(yellow("%s", vvv), "\n", "\n    \t"))
 		_, errPrint := fmt.Fprint(f.Output(), b.String(), "\n")
-		helpers.ToLog(errPrint, fmt.Sprintf("print data error"))
+		helpers.ToLog(errPrint, "print data error")
 	})
 }
 
