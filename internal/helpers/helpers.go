@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -47,21 +46,6 @@ func init() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 }
-
-// ToLog splits notifications into Error and Debug(text).
-// func ToLog(err any) {
-// 	if err == nil || err == "" {
-// 		return
-// 	}
-// 	switch val := err.(type) {
-// 	case error:
-// 		if val.Error() != "" {
-// 			log.Error().Msgf("%v", val)
-// 		}
-// 	default:
-// 		log.Debug().Msgf("%v", val)
-// 	}
-// }
 
 // ToLog splits notifications into Error and Debug(text).
 func ToLog(err any, text ...string) {
@@ -123,28 +107,18 @@ func logger(typ int) zerolog.Logger {
 }
 
 // DeleteFile delete file in temp folder. Actually means delete any file by path
-func DeleteFile(path string) {
-	ToLog(os.RemoveAll(path))
+func DeleteFile(filename string) {
+	filename = separatorCorrect(filename)
+	ToLog(os.RemoveAll(filename))
 }
 
 // FileExist checking if file exists by path
-func FileExist(path string) bool {
-	_, err := os.Stat(path)
+func FileExist(filename string) bool {
+	if filename == "." {
+		return false
+	}
+	_, err := os.Stat(filename)
 	return err == nil
-}
-
-// SettingsFile return map[string]string from the setting file
-func SettingsFile(filename string) (compare map[string]any) {
-	if runtime.GOOS != "windows" {
-		filename = fmt.Sprintf("/%s", filename)
-	}
-	if FileExist(filename) {
-		f, err := os.ReadFile(filename)
-		ToLog(err, fmt.Sprintf("settings file '%s' is not access", filename))
-		err = json.Unmarshal(f, &compare)
-		ToLog(err, fmt.Sprintf("settings file '%s' parse error", filename))
-	}
-	return
 }
 
 // ValidUUID - validation on the UUID
@@ -194,24 +168,30 @@ func CloseFile(file *os.File) {
 	}
 }
 
-// FilepathElements - split filename using separate symbols
-func FilepathElements(path string) []string {
-	return strings.FieldsFunc(path, func(symbols rune) bool {
-		return strings.ContainsAny(string(symbols), `\/`)
-	})
+// SettingsFile return map[string]string from the setting file
+func SettingsFile(filename string) (compare map[string]any) {
+	filename = separatorCorrect(filename)
+	if FileExist(filename) {
+		f, err := os.ReadFile(filename)
+		ToLog(err, fmt.Sprintf("settings file '%s' is not access", filename))
+		err = json.Unmarshal(f, &compare)
+		ToLog(err, fmt.Sprintf("settings file '%s' parse error", filename))
+	}
+	return
 }
 
 // CreateFile create file or temp file
-func CreateFile(path string) string {
-	if path == "" {
+func CreateFile(filename string) string {
+	filename = separatorCorrect(filename)
+	if filename == "" || filename == "." {
 		file, err := os.CreateTemp("", "*.tmpgo")
 		defer CloseFile(file)
-		ToLog(err, fmt.Sprintf("file '%s' not created", path))
+		ToLog(err, fmt.Sprintf("file '%s' not created", filename))
 		return file.Name()
 	} else {
-		file, err := os.Create(path)
+		file, err := os.Create(filename)
 		defer CloseFile(file)
-		ToLog(err, fmt.Sprintf("file '%s' not created", path))
+		ToLog(err, fmt.Sprintf("file '%s' not created", filename))
 		return file.Name()
 	}
 }
@@ -219,46 +199,46 @@ func CreateFile(path string) string {
 // ValidTempFile - validation type.
 // create same name file in Temp folder or create random temp file
 func ValidTempFile(filename string) string {
-	filename = strings.TrimSpace(filename)
-	if filename == "" {
-		return CreateFile("")
+	filename = separatorCorrect(filename)
+	_, file := filepath.Split(filename)
+
+	if filename == "" || filename == "." {
+		return CreateFile(filename)
 	}
-	elementsOfPath := FilepathElements(filename)
-	newFilepath := filepath.Join(os.TempDir(), elementsOfPath[len(elementsOfPath)-1])
-	if !FileExist(newFilepath) {
-		CreateFile(newFilepath)
+
+	filename = filepath.Join(os.TempDir(), file)
+	if !FileExist(filename) {
+		return CreateFile(filename)
 	}
-	return newFilepath
+
+	return filename
 }
 
 // ValidConfigFile - validation type.
 // create same name file in Temp folder or create random temp file
 func ValidConfigFile(filename string) string {
-	filename = strings.TrimSpace(filename)
-	if filename == "" {
+	filename = separatorCorrect(filename)
+
+	if !FileExist(filename) || filename == "" || filename == "." {
 		return ""
 	}
-	elementsOfPath := FilepathElements(filename)
-	newFilepath := filepath.Join(elementsOfPath...)
-	if !FileExist(newFilepath) {
-		return ""
-	}
-	return newFilepath
+
+	return filename
 }
 
 // ValidFile - validation type.
 // Create file in not exist.
 func ValidFile(filename string) string {
-	filename = strings.TrimSpace(filename)
-	if filename == "" {
-		return CreateFile("")
+	filename = separatorCorrect(filename)
+
+	if filename == "" || filename == "." {
+		return CreateFile(filename)
 	}
-	elementsOfPath := FilepathElements(filename)
-	newFilepath := filepath.Join(elementsOfPath...)
-	if !FileExist(newFilepath) {
-		CreateFile(newFilepath)
+
+	if !FileExist(filename) {
+		CreateFile(filename)
 	}
-	return newFilepath
+	return filename
 }
 
 // ValidDuration - validation on the duration
@@ -316,4 +296,9 @@ func ValidURL(v string) string {
 		return address + ":80"
 	}
 	return address + ":" + correctPort
+}
+
+func separatorCorrect(filename string) string {
+	r := strings.NewReplacer("/", string(os.PathSeparator), "\\", string(os.PathSeparator))
+	return filepath.Clean(r.Replace(strings.TrimSpace(filename)))
 }
