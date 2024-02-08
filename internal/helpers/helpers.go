@@ -16,6 +16,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/KusoKaihatsuSha/startup/internal/order"
 )
 
 // Logger output types
@@ -301,4 +303,83 @@ func ValidURL(v string) string {
 func separatorCorrect(filename string) string {
 	r := strings.NewReplacer("/", string(os.PathSeparator), "\\", string(os.PathSeparator))
 	return filepath.Clean(r.Replace(strings.TrimSpace(filename)))
+}
+
+func FileConfExistInStages(stages ...order.Stages) bool {
+	for _, stage := range stages {
+		if stage == order.FILE {
+			return true
+		}
+	}
+	return false
+}
+
+func printDebug(stages ...order.Stages) {
+	fmt.Println("Structure filling order:")
+	for k, stage := range stages {
+		prefix := ""
+		suf := "\n"
+		if k != len(stages)-1 {
+			suf = " ↣ "
+		}
+		if k == 0 {
+			prefix = "\t"
+		}
+		switch stage {
+		case order.FLAG:
+			fmt.Printf("%s%s%s", prefix, "[Flags]", suf)
+		case order.FILE:
+			fmt.Printf("%s%s%s", prefix, "[JSON File]", suf)
+		case order.ENV:
+			fmt.Printf("%s%s%s", prefix, "[Environments]", suf)
+		}
+	}
+}
+
+func PrintDebug(stages ...order.Stages) {
+	for _, stage := range stages {
+		switch stage {
+		case order.NoPreloadConfig:
+			fmt.Printf("%s - Disable find config in other places. Only in list\n", "NoPreloadConfig")
+			printDebug(stages...)
+			return
+		case order.PreloadConfigFlagThenEnv:
+			fmt.Printf("%s - Preload find config in Flag then Env\n", "PreloadConfigFlagThenEnv")
+			printDebug(stages...)
+			return
+		case order.PreloadConfigFlag:
+			fmt.Printf("%s - Preload find config in Flag\n", "PreloadConfigFlag")
+			printDebug(stages...)
+			return
+		case order.PreloadConfigEnv:
+			fmt.Printf("%s - Preload find config in Env\n", "PreloadConfigEnv")
+			printDebug(stages...)
+			return
+		}
+	}
+	if stages == nil {
+		fmt.Printf("%s - only defaults\n", "EMPTY")
+	} else {
+		fmt.Printf("%s - Preload find config in Env then Flag\n", "PreloadConfigEnvThenFlag/Default")
+		printDebug(stages...)
+	}
+
+}
+
+func PresetPreload(stages ...order.Stages) []order.Stages {
+	for _, v := range stages {
+		switch v {
+		case order.NoPreloadConfig:
+			return stages
+		case order.PreloadConfigEnvThenFlag:
+			return []order.Stages{order.ENV, order.FLAG}
+		case order.PreloadConfigFlagThenEnv:
+			return []order.Stages{order.FLAG, order.ENV}
+		case order.PreloadConfigFlag:
+			return []order.Stages{order.FLAG}
+		case order.PreloadConfigEnv:
+			return []order.Stages{order.ENV}
+		}
+	}
+	return []order.Stages{order.ENV, order.FLAG}
 }

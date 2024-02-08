@@ -239,11 +239,11 @@ func PrintDefaults(f *flag.FlagSet, o ...order.Stages) {
 			def.WriteString(" --> ")
 		}
 		switch v {
-		case order.Flag:
+		case order.FLAG:
 			def.WriteString("Flags")
-		case order.File:
+		case order.FILE:
 			def.WriteString("Config file (JSON)")
-		case order.Env:
+		case order.ENV:
 			def.WriteString("Environment")
 		}
 	}
@@ -330,83 +330,83 @@ func comparatorInfo(t *storage, o ...order.Stages) string {
 		switch reflectTypeName {
 		case "string":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "bool":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sampleBool(fileName, t.Name)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "duration":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += durationSample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "int8", "int16", "int32", "int64", "rune":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "int":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "uint8", "uint16", "uint32", "uint64":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "uint":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, t.Default)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		case "float32", "float64":
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				ret += sample(fileName, t.Name, fmt.Sprintf("%f", helpers.ValidFloat(t.Default)))
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		default:
 			switch v {
-			case order.Flag:
+			case order.FLAG:
 				// ret += sample(fileName, flagName, def, flagOrder)
-			case order.File:
+			case order.FILE:
 				ret += sampleJson(t.JSON, t.Store)
-			case order.Env:
+			case order.ENV:
 				ret += sampleEnv(t.Env, t.Default)
 			}
 		}

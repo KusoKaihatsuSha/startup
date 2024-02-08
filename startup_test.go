@@ -11,7 +11,10 @@ import (
 
 	"github.com/KusoKaihatsuSha/startup"
 	"github.com/KusoKaihatsuSha/startup/internal/helpers"
+	"github.com/KusoKaihatsuSha/startup/internal/order"
 )
+
+var defArgs = os.Args
 
 type Configuration struct {
 	TestOrder         string            `json:"test-order"    default:"http://def:81" flag:"to,test,order" env:"TEST_ORDER"    help:"order" valid:"url"`
@@ -82,23 +85,464 @@ func (o maxValid) Valid(stringValue string, value any) (any, bool) {
 	return value, true
 }
 
-func Example_configOrder() {
-	testDataFlag := `{
-                 "test-order": "http://file-flag"
-         }`
-	testDataEnv := `{
-                 "test-order": "http://file-env"
-         }`
-	fileFlag := helpers.CreateFile("")
-	defer helpers.DeleteFile(fileFlag)
-	err := os.WriteFile(fileFlag, []byte(testDataFlag), 0755)
+func runNoPreload() {
+	startup.DEBUG = true
+
+	startup.GetForce[Configuration](order.NoPreloadConfig)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.NoPreloadConfig,
+		order.FILE,
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.FILE,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.NoPreloadConfig,
+		order.FILE,
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FILE,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.ENV,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FLAG,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.FLAG,
+		order.ENV,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.FILE,
+		order.ENV,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.ENV,
+		order.FLAG,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FILE,
+		order.FLAG,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.ENV,
+		order.FILE,
+		order.NoPreloadConfig,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FLAG,
+		order.FILE,
+		order.NoPreloadConfig,
+	)
+}
+
+func run() {
+	startup.DEBUG = true
+
+	startup.GetForce[Configuration]()
+
+	startup.GetForce[Configuration](
+		order.FILE,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.FILE,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FILE,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.FLAG,
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.FILE,
+		order.ENV,
+	)
+
+	startup.GetForce[Configuration](
+		order.FILE,
+		order.ENV,
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FILE,
+		order.FLAG,
+	)
+
+	startup.GetForce[Configuration](
+		order.FLAG,
+		order.ENV,
+		order.FILE,
+	)
+
+	startup.GetForce[Configuration](
+		order.ENV,
+		order.FLAG,
+		order.FILE,
+	)
+	startup.DEBUG = false
+}
+
+func Example_configOrderDef() {
+	os.Args = defArgs
+	run()
+
+	// Output:
+	// EMPTY - only defaults
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+
+}
+
+func Example_configOrderFlagEnv() {
+	os.Args = defArgs
+	err := os.Setenv("TEST_ORDER", "http://env")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fileEnv := helpers.CreateFile("")
-	defer helpers.DeleteFile(fileFlag)
-	err = os.WriteFile(fileEnv, []byte(testDataEnv), 0755)
 
+	flagVal := "http://flag"
+	os.Args = append(
+		os.Args,
+		"-to="+"http://flag-skip",
+		"-test="+flagVal,
+	)
+
+	fmt.Printf(
+		`
+PRESETS
+┌──────────────────────────────────────────────────────────────────────────
+│                         flag : %s
+│                  environment : %s
+└──────────────────────────────────────────────────────────────────────────
+`,
+		flagVal,
+		os.Getenv("TEST_ORDER"),
+	)
+
+	run()
+
+	// Output:
+	// PRESETS
+	// ┌──────────────────────────────────────────────────────────────────────────
+	// │                         flag : http://flag
+	// │                  environment : http://env
+	// └──────────────────────────────────────────────────────────────────────────
+	// EMPTY - only defaults
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+
+}
+
+func Example_configOrderConfFlagEnv() {
+	os.Args = defArgs
+	testDataDef := `{
+	             "test-order": "http://config.ini"
+	     }`
+
+	fileDef := helpers.CreateFile("config.ini")
+	defer helpers.DeleteFile(fileDef)
+	err := os.WriteFile(fileDef, []byte(testDataDef), 0755)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -107,6 +551,187 @@ func Example_configOrder() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	flagVal := "http://flag"
+	os.Args = append(
+		os.Args,
+		"-to="+"http://flag-skip",
+		"-test="+flagVal,
+	)
+
+	fmt.Printf(
+		`
+PRESETS
+┌──────────────────────────────────────────────────────────────────────────
+│                         flag : %s
+│                  environment : %s
+│                  config file : %s
+└──────────────────────────────────────────────────────────────────────────
+`,
+		flagVal,
+		os.Getenv("TEST_ORDER"),
+		"config.ini",
+	)
+
+	run()
+
+	// Output:
+	// PRESETS
+	// ┌──────────────────────────────────────────────────────────────────────────
+	// │                         flag : http://flag
+	// │                  environment : http://env
+	// │                  config file : config.ini
+	// └──────────────────────────────────────────────────────────────────────────
+	// EMPTY - only defaults
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {config.ini:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {config.ini:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {config.ini:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {config.ini:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Environment 'CONFIG' with filepath not set
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => default config.ini
+	// DATA => {config.ini:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+
+}
+
+func Example_configOrderManyConfFlagEnv() {
+	os.Args = defArgs
+	testDataDef := `{
+	             "test-order": "http://config.ini"
+	     }`
+	testDataFlag := `{
+                 "test-order": "http://file-flag"
+         }`
+	testDataEnv := `{
+                 "test-order": "http://file-env"
+         }`
+	fileDef := helpers.CreateFile("config.ini")
+	defer helpers.DeleteFile(fileDef)
+	err := os.WriteFile(fileDef, []byte(testDataDef), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fileFlag := helpers.ValidTempFile("file-flag.confile")
+	defer helpers.DeleteFile(fileFlag)
+	err = os.WriteFile(fileFlag, []byte(testDataFlag), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fileEnv := helpers.ValidTempFile("file-env.confile")
+	defer helpers.DeleteFile(fileEnv)
+	err = os.WriteFile(fileEnv, []byte(testDataEnv), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = os.Setenv("TEST_ORDER", "http://env")
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	err = os.Setenv("CONFIG", fileEnv)
 	if err != nil {
 		fmt.Println(err)
@@ -121,6 +746,189 @@ func Example_configOrder() {
 
 	fmt.Printf(
 		`
+PRESETS
+┌──────────────────────────────────────────────────────────────────────────
+│                         flag : %s
+│                  environment : %s
+│   config-file in environment : %s
+│          config-file in flag : %s
+│              def config-file : %s
+└──────────────────────────────────────────────────────────────────────────
+`,
+		flagVal,
+		os.Getenv("TEST_ORDER"),
+		strings.ReplaceAll(strings.ReplaceAll(testDataEnv, " ", ""), string([]rune{10}), ""),
+		strings.ReplaceAll(strings.ReplaceAll(testDataFlag, " ", ""), string([]rune{10}), ""),
+		"config.ini",
+	)
+
+	run()
+
+	// Output:
+	// PRESETS
+	// ┌──────────────────────────────────────────────────────────────────────────
+	// │                         flag : http://flag
+	// │                  environment : http://env
+	// │   config-file in environment : {"test-order":"http://file-env"}
+	// │          config-file in flag : {"test-order":"http://file-flag"}
+	// │              def config-file : config.ini
+	// └──────────────────────────────────────────────────────────────────────────
+	// EMPTY - only defaults
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+
+}
+
+func Example_configOrderOtherConfFlagEnv() {
+	os.Args = defArgs
+	testDataFlag := `{
+                 "test-order": "http://file-flag"
+         }`
+	testDataEnv := `{
+                 "test-order": "http://file-env"
+         }`
+
+	fileFlag := helpers.ValidTempFile("file-flag.confile")
+	defer helpers.DeleteFile(fileFlag)
+	err := os.WriteFile(fileFlag, []byte(testDataFlag), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fileEnv := helpers.ValidTempFile("file-env.confile")
+	defer helpers.DeleteFile(fileEnv)
+	err = os.WriteFile(fileEnv, []byte(testDataEnv), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = os.Setenv("TEST_ORDER", "http://env")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = os.Setenv("CONFIG", fileEnv)
+	if err != nil {
+		fmt.Println(err)
+	}
+	flagVal := "http://flag"
+	os.Args = append(
+		os.Args,
+		"-config="+fileFlag,
+		"-to="+"http://flag-skip",
+		"-test="+flagVal,
+	)
+
+	fmt.Printf(
+		`
+PRESETS
 ┌──────────────────────────────────────────────────────────────────────────
 │                         flag : %s
 │                  environment : %s
@@ -134,308 +942,371 @@ func Example_configOrder() {
 		strings.ReplaceAll(strings.ReplaceAll(testDataFlag, " ", ""), string([]rune{10}), ""),
 	)
 
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"file ↣ "+
-			""+
-			"",
-		startup.GetForce[Configuration](
-			startup.File,
-		).TestOrder,
-		"| file config.ini not exist and default only",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"flag ↣ "+
-			""+
-			"",
-		startup.GetForce[Configuration](
-			startup.Flag,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			""+
-			"",
-		startup.GetForce[Configuration](
-			startup.Env,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"file ↣ "+
-			"flag ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.File,
-			startup.Flag,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"flag ↣ "+
-			"file ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.Flag,
-			startup.File,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"file ↣ "+
-			"env ↣"+
-			"",
-		startup.GetForce[Configuration](
-			startup.File,
-			startup.Env,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			"file ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.Env,
-			startup.File,
-		).TestOrder,
-		"|",
-	)
-
-	errEnv := os.Unsetenv("CONFIG")
-	helpers.ToLog(errEnv)
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			"file ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.Env,
-			startup.File,
-		).TestOrder,
-		"| not filepath in env CONFIG",
-	)
-	errEnv = os.Setenv("CONFIG", fileEnv)
-	helpers.ToLog(errEnv)
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"flag ↣ "+
-			"env ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.Flag,
-			startup.Env,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			"flag ↣ "+
-			"",
-		startup.GetForce[Configuration](
-			startup.Env,
-			startup.Flag,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"file ↣ "+
-			"flag ↣ "+
-			"env ↣ ",
-		startup.GetForce[Configuration](
-			startup.File,
-			startup.Flag,
-			startup.Env,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"flag ↣ "+
-			"file ↣ "+
-			"env ↣ ",
-		startup.GetForce[Configuration](
-			startup.Flag,
-			startup.File,
-			startup.Env,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"file ↣ "+
-			"env ↣ "+
-			"flag ↣ ",
-		startup.GetForce[Configuration](
-			startup.File,
-			startup.Env,
-			startup.Flag,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			"file ↣ "+
-			"flag ↣ ",
-		startup.GetForce[Configuration](
-			startup.Env,
-			startup.File,
-			startup.Flag,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"flag ↣ "+
-			"env ↣ "+
-			"file ↣ ",
-		startup.GetForce[Configuration](
-			startup.Flag,
-			startup.Env,
-			startup.File,
-		).TestOrder,
-		"|",
-	)
-
-	fmt.Printf(
-		"ORDER %s %s %s\n",
-		"env ↣ "+
-			"flag ↣ "+
-			"file ↣ ",
-		startup.GetForce[Configuration](
-			startup.Env,
-			startup.Flag,
-			startup.File,
-		).TestOrder,
-		"|",
-	)
+	run()
 
 	// Output:
+	// PRESETS
 	// ┌──────────────────────────────────────────────────────────────────────────
 	// │                         flag : http://flag
 	// │                  environment : http://env
 	// │   config-file in environment : {"test-order":"http://file-env"}
 	// │          config-file in flag : {"test-order":"http://file-flag"}
 	// └──────────────────────────────────────────────────────────────────────────
-	// ORDER file ↣  def:81 | file config.ini not exist and default only
-	// ORDER flag ↣  flag:80 |
-	// ORDER env ↣  env:80 |
-	// ORDER file ↣ flag ↣  flag:80 |
-	// ORDER flag ↣ file ↣  file-flag:80 |
-	// ORDER file ↣ env ↣ env:80 |
-	// ORDER env ↣ file ↣  file-env:80 |
-	// ORDER env ↣ file ↣  env:80 | not filepath in env CONFIG
-	// ORDER flag ↣ env ↣  env:80 |
-	// ORDER env ↣ flag ↣  flag:80 |
-	// ORDER file ↣ flag ↣ env ↣  env:80 |
-	// ORDER flag ↣ file ↣ env ↣  env:80 |
-	// ORDER file ↣ env ↣ flag ↣  flag:80 |
-	// ORDER env ↣ file ↣ flag ↣  flag:80 |
-	// ORDER flag ↣ env ↣ file ↣  file-env:80 |
-	// ORDER env ↣ flag ↣ file ↣  file-flag:80 |
+	// EMPTY - only defaults
+	// DATA => {def:81 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-env:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Get filepath from flag '-config'
+	// FILE => file-flag.confile
+	// DATA => {file-flag:80 email [] 11 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
 
 }
 
-func Example_configTypes() {
+func Example_configOrigin() {
+	os.Args = defArgs
+
 	startup.AddValidation(testValidation)
 	startup.AddValidation(emailValidation)
 	startup.AddValidation(maxValidation)
 
+	err := os.Setenv("TEST_SLICE", "999")
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	os.Args = append(
 		os.Args,
-		"-test-email="+"my@email.post",
+		"-test-email="+"flag@email.post",
 		"-test-int="+"100",
-		"-test-json="+"{\"param1\":\"default_003\",\"param2\":\"default_004\"}",
+		"-test-slice="+"100,200,300",
+		"-test-json="+"{\"param1\":\"new_003\",\"param2\":\"new_004\"}",
 	)
 
-	get := startup.GetForce[Configuration](
-		startup.File,
-		startup.Env,
-		startup.Flag,
-	)
+	testDataEnv := `{
+                 "test-email": "fileenv@mail.com",
+                 "test-slice": "18,19,20"
+         }`
 
-	fmt.Printf(
-		"custom email ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestEmail,
-	)
+	fileEnv := helpers.ValidTempFile("test.confile")
+	defer helpers.DeleteFile(fileEnv)
+	err = os.WriteFile(fileEnv, []byte(testDataEnv), 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = os.Setenv("CONFIG", fileEnv)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	fmt.Printf(
-		"custom slice ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestSlice,
-	)
-
-	fmt.Printf(
-		"custom integer max 10 ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestInt,
-	)
-
-	fmt.Printf(
-		"duration ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestDuration,
-	)
-
-	fmt.Printf(
-		"boolean ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestBool,
-	)
-
-	fmt.Printf(
-		"float ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestFloat,
-	)
-
-	fmt.Printf(
-		"uint ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestUint,
-	)
-
-	fmt.Printf(
-		"ip ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
-		get.TestIP,
-	)
-
-	fmt.Printf(
-		"json unmarshal ↣ TYPE [%[1]T] VALUE [%#[1]v]\n",
-		get.TestJSON,
-	)
-
-	fmt.Printf(
-		"json non method ↣ TYPE [%[1]T] VALUE [%#[1]v]\n",
-		get.TestNonMethodJSON,
-	)
+	run()
+	runNoPreload()
 
 	// Output:
-	// custom email ↣ TYPE [string] VALUE [my@email.post]
-	// custom slice ↣ TYPE [[]string] VALUE [[1 2 3 4 5 6]]
-	// custom integer max 10 ↣ TYPE [int64] VALUE [10]
-	// duration ↣ TYPE [time.Duration] VALUE [1s]
-	// boolean ↣ TYPE [bool] VALUE [true]
-	// float ↣ TYPE [float64] VALUE [1]
-	// uint ↣ TYPE [uint64] VALUE [111]
-	// ip ↣ TYPE [net.IP] VALUE [127.0.0.1]
-	// json unmarshal ↣ TYPE [startup_test.TestJSON] VALUE [startup_test.TestJSON{P1:"default_003", P2:"default_004"}]
-	// json non method ↣ TYPE [startup_test.TestNonMethodJSON] VALUE [startup_test.TestNonMethodJSON{P1:"", P2:""}]
+	// EMPTY - only defaults
+	// DATA => {def:81 email@example.com [1 2 3 4 5 6] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {def:81 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags]
+	// DATA => {def:81 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments]
+	// DATA => {env:80 email@example.com [999] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {def:81 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {def:81 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [999] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments]
+	// DATA => {env:80 flag@email.post [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags]
+	// DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// PreloadConfigEnvThenFlag/Default - Preload find config in Env then Flag
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	// DATA => {def:81 email@example.com [1 2 3 4 5 6] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[JSON File] ↣ FILE => not any config file
+	// DATA => {def:81 email@example.com [1 2 3 4 5 6] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Flags] ↣ DATA => {def:81 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Environments] ↣ DATA => {env:80 email@example.com [999] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	// [JSON File] ↣ [Flags]
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ 	info about config file:	Flag '-config' with filepath not set
+	// FILE => not any config file
+	// DATA => {def:81 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	// [JSON File] ↣ [Environments]
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [999] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ 	info about config file:	Get filepath from environment 'CONFIG'
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {default_001 default_002}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ DATA => {env:80 flag@email.post [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[JSON File] ↣ [Flags] ↣ [Environments] ↣ 	info about config file:	Flag '-config' with filepath not set
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Flags] ↣ [JSON File] ↣ [Environments] ↣ 	info about config file:	Flag '-config' with filepath not set
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [999] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[JSON File] ↣ [Environments] ↣ [Flags] ↣ 	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Environments] ↣ [JSON File] ↣ [Flags] ↣ 	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 flag@email.post [100 200 300] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Flags] ↣ [Environments] ↣ [JSON File] ↣ 	info about config file:	Flag '-config' with filepath not set
+	//	info about config file:	Get filepath from environment 'CONFIG'
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
+	//
+	// NoPreloadConfig - Disable find config in other places. Only in list
+	// Structure filling order:
+	//	[Environments] ↣ [Flags] ↣ [JSON File] ↣ 	info about config file:	Get filepath from environment 'CONFIG'
+	//	info about config file:	Flag '-config' with filepath not set
+	// FILE => test.confile
+	// DATA => {env:80 fileenv@mail.com [18 19 20] 10 1s true 1 111 127.0.0.1 { } {new_003 new_004}}
 
 }
