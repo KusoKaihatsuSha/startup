@@ -1,9 +1,9 @@
 [![godoc](https://godoc.org/github.com/KusoKaihatsuSha/startup?status.svg)](https://godoc.org/github.com/KusoKaihatsuSha/startup) [![Go Report Card](https://goreportcard.com/badge/github.com/KusoKaihatsuSha/startup)](https://goreportcard.com/report/github.com/KusoKaihatsuSha/startup) [![go test](https://github.com/KusoKaihatsuSha/startup/actions/workflows/test.yml/badge.svg)](https://github.com/KusoKaihatsuSha/startup/actions/workflows/test.yml)
 
-
 # Package `startup`
 > Use the package's functionality to simplify the use of flags, environments and config file when starting the application.  
-> Fill custom Golang `struct` from environments, flags or configuration file (JSON) with desired order.
+> Fill custom Golang `struct` from environments, flags or configuration file (JSON) with desired order.  
+> Convenient for setting up an application for a `container` (`Docker`, `Podman`)
 
 ### Install
 ```shell
@@ -17,20 +17,23 @@ go mod tidy
 ```
 
 ### Usage
-Use annotations within struct fields such as:  
+![img_3.png](image/usage.png)
+
 ```go
-TestString string `json:"json-tag-in-file" default:"default-value" flag:"flag-name" env:"ENV_NAME" help:"description"`
+type CustomConf struct {
+    VarStr string `json:"t-str" default:"abcd" flag:"t-str" env:"T_STR" help:"description"`
+}
 ```
-Get data with custom order(Env => Flag):  
+Order (`low` -> `high`) [`FILE` -> `ENV` -> `FLAG`]:  
 ```go
-filledConfig := startup.GetForce[Configuration](
-    startup.Env,
-    startup.Flag,
-)
+filledCustomConf := startup.Get[CustomConf](
+	startup.FILE,
+	startup.ENV,
+	startup.FLAG,
+	)
 ```
 
-
-### Quick Example
+### Example 01
 ```go
 // Some struct
 type Configuration struct {
@@ -43,28 +46,28 @@ type Configuration struct {
 }
 
 func main() {
-// Emulated settings at startup
-os.Setenv("TEST_STR", "dcba")
-os.Setenv("TEST_UINT", "999")
-os.Setenv("TEST_DURATION", "11h")
-os.Args = append(
-    os.Args,
-    "-test-bool",
-    "-test-uint=741",
-)
-
-// Get filled configs (ORDER: Environment -> Flags ).
-config := startup.GetForce[Configuration](
-    startup.Env,
-    startup.Flag,
-)
-
-// Print result => {dcba 11 11h0m0s true 1 741}
-fmt.Printf("%v\n", config)
+    // Emulated settings at startup
+    os.Setenv("TEST_STR", "dcba")
+    os.Setenv("TEST_UINT", "999")
+    os.Setenv("TEST_DURATION", "11h")
+    os.Args = append(
+        os.Args,
+        "-test-bool",
+        "-test-uint=741",
+    )
+    
+    // Get filled configs (ORDER: Environment -> Flags ).
+    config := startup.GetForce[Configuration](
+        startup.ENV,
+        startup.FLAG,
+    )
+    
+    // Print result => {dcba 11 11h0m0s true 1 741}
+    fmt.Printf("%v\n", config)
 }
 ```
 
-### Example
+### Example 02
 ```go
 package main
 
@@ -107,7 +110,7 @@ func (t *TestJSON) UnmarshalText(text []byte) error {
     return nil
 }
 
-// Custom slice validation
+// Custom slice validation  
 type sliceValid string
 
 var sliceValidation sliceValid = "slice"
@@ -121,12 +124,12 @@ func main() {
     
     // Add custom validation
     startup.AddValidation(sliceValidation)
-    
-	// Implement all types of configs (ORDER: Json file -> Environment -> Flags ).
+	
+    // Implement all types of configs (ORDER: Json file -> Environment -> Flags ).
     get := startup.GetForce[Configuration](
-        startup.File,
-        startup.Env,
-        startup.Flag,
+        startup.FILE,
+        startup.ENV,
+        startup.FLAG,
     )
     
     //---PRINT SECTION---
@@ -188,10 +191,16 @@ func main() {
   - `uuid` - Check uuid. Return new if not exist (string in struct)
 
 ### Caution
-flags are reserved:
+Default config filename:
+  - `config.ini`
+
+Flags are reserved:
   - `config`
 
-### Print `-h` or `-help` tag example
+Environments are reserved:
+  - `CONFIG`
+
+### Print `-h` or `-help` tag Example
 ```
 Order of priority for settings (low -> high):
 Config file (JSON) --> Environment --> Flags
