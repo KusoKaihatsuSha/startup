@@ -127,13 +127,12 @@ func main() {
     startup.AddValidation(sliceValidation)
 	
     // Implement all types of configs (ORDER: Json file -> Environment -> Flags ).
-    get := startup.GetForce[Configuration](
+    get := startup.Get[Configuration](
         startup.FILE,
         startup.ENV,
         startup.FLAG,
     )
     
-    //---PRINT SECTION---
     fmt.Printf(
         "string ↣ TYPE [%[1]T] VALUE [%[1]v]\n",
         get.TestEmail,
