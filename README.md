@@ -1,4 +1,5 @@
 [![godoc](https://godoc.org/github.com/KusoKaihatsuSha/startup?status.svg)](https://godoc.org/github.com/KusoKaihatsuSha/startup) [![Go Report Card](https://goreportcard.com/badge/github.com/KusoKaihatsuSha/startup)](https://goreportcard.com/report/github.com/KusoKaihatsuSha/startup) [![go test](https://github.com/KusoKaihatsuSha/startup/actions/workflows/test.yml/badge.svg)](https://github.com/KusoKaihatsuSha/startup/actions/workflows/test.yml)
+[![Go Coverage](https://github.com/KusoKaihatsuSha/startup/wiki/coverage.svg)](https://raw.githack.com/wiki/KusoKaihatsuSha/startup/coverage.html)
 
 # Package `startup`
 > Use the package's functionality to simplify the use of flags, environments and config file when starting the application.  
