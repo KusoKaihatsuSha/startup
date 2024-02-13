@@ -313,7 +313,11 @@ func (t *temp[T]) valid() *temp[T] {
 	for k, v := range t.Tags {
 		field := reflect.ValueOf(&t.CustomerConfiguration).Elem().FieldByName(k)
 		if field.CanSet() {
-			field.Set(reflect.ValueOf(v.Valid()))
+			if valid := v.Valid(); valid != nil {
+				field.Set(reflect.ValueOf(valid))
+			} else {
+				field.SetZero()
+			}
 		}
 	}
 	return t
